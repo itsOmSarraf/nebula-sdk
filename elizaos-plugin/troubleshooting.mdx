@@ -1,0 +1,332 @@
+---
+title: "Troubleshooting"
+description: "Common issues and solutions for the ElizaOS 0G plugin"
+---
+
+# Troubleshooting
+
+This guide covers common issues you might encounter when using the ElizaOS 0G plugin and their solutions.
+
+## File Access Errors
+
+### File Not Found
+
+**Problem**: Plugin cannot locate the specified file.
+
+```text
+❌ Error: File not found at path: ./document.pdf
+```
+
+**Solutions**:
+
+1. **Check file path**: Verify the file exists at the specified location
+   ```bash
+   ls -la ./document.pdf
+   ```
+
+2. **Use absolute paths**: Provide full file path to avoid ambiguity
+   ```javascript
+   // Instead of: "./document.pdf"
+   // Use: "/home/user/documents/document.pdf"
+   ```
+
+3. **Check current directory**: Ensure you're in the correct working directory
+   ```bash
+   pwd
+   ls -la
+   ```
+
+### Permission Denied
+
+**Problem**: Insufficient permissions to read the file.
+
+```text
+❌ Error: Permission denied accessing file: /protected/file.pdf
+```
+
+**Solutions**:
+
+1. **Check file permissions**:
+   ```bash
+   ls -la /path/to/file.pdf
+   ```
+
+2. **Fix permissions**:
+   ```bash
+   chmod 644 /path/to/file.pdf
+   ```
+
+3. **Run with appropriate user**: Ensure the process has read access
+
+### Invalid Path Format
+
+**Problem**: File path contains invalid characters or format.
+
+**Solutions**:
+
+1. **Escape special characters**:
+   ```javascript
+   // Escape spaces and special characters
+   const filePath = "/path/to/my\\ file.pdf";
+   ```
+
+2. **Use quotes for paths with spaces**:
+   ```javascript
+   const filePath = '"/path/to/my file.pdf"';
+   ```
+
+## Configuration Issues
+
+### Missing Environment Variables
+
+**Problem**: Required configuration not set.
+
+```text
+❌ Error: ZEROG_INDEXER_RPC environment variable not set
+```
+
+**Solutions**:
+
+1. **Create .env file**:
+   ```bash
+   # .env
+   ZEROG_INDEXER_RPC=https://indexer-testnet.0g.ai
+   ZEROG_EVM_RPC=https://evmrpc-testnet.0g.ai
+   ZEROG_PRIVATE_KEY=your_private_key_here
+   ZEROG_FLOW_ADDRESS=0x1234567890abcdef1234567890abcdef12345678
+   ```
+
+2. **Load environment variables**:
+   ```javascript
+   import dotenv from 'dotenv';
+   dotenv.config();
+   ```
+
+3. **Verify variables are loaded**:
+   ```javascript
+   console.log('RPC:', process.env.ZEROG_INDEXER_RPC);
+   ```
+
+### Invalid RPC Endpoints
+
+**Problem**: Cannot connect to 0G network endpoints.
+
+```text
+❌ Error: Failed to connect to RPC endpoint
+```
+
+**Solutions**:
+
+1. **Test endpoint connectivity**:
+   ```bash
+   curl -X POST -H "Content-Type: application/json" \
+     --data '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}' \
+     https://evmrpc-testnet.0g.ai
+   ```
+
+2. **Check network connectivity**:
+   ```bash
+   ping evmrpc-testnet.0g.ai
+   ```
+
+3. **Use alternative endpoints**: Try different RPC providers if available
+
+4. **Check firewall settings**: Ensure outbound connections are allowed
+
+### Private Key Issues
+
+**Problem**: Invalid private key format or insufficient permissions.
+
+```text
+❌ Error: Invalid private key format
+```
+
+**Solutions**:
+
+1. **Verify private key format**:
+   ```javascript
+   // Should start with 0x and be 64 hex characters
+   const validKey = "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef";
+   ```
+
+2. **Check account balance**:
+   ```bash
+   # Use 0G explorer or RPC call to check balance
+   ```
+
+3. **Ensure sufficient gas**: Account needs tokens for transaction fees
+
+## Network and Upload Issues
+
+### Upload Timeout
+
+**Problem**: File upload takes too long and times out.
+
+```text
+❌ Error: Upload timeout after 300 seconds
+```
+
+**Solutions**:
+
+1. **Reduce file size**:
+   ```bash
+   # Compress large files
+   gzip large-file.pdf
+   ```
+
+2. **Check network speed**: Ensure stable internet connection
+
+3. **Increase timeout**: Configure longer timeout for large files
+
+4. **Split large files**: Break into smaller chunks if possible
+
+### Transaction Failed
+
+**Problem**: Blockchain transaction fails during upload.
+
+```text
+❌ Error: Transaction failed with gas estimation error
+```
+
+**Solutions**:
+
+1. **Check account balance**: Ensure sufficient tokens for gas fees
+
+2. **Increase gas limit**:
+   ```javascript
+   const gasLimit = 500000; // Increase if needed
+   ```
+
+3. **Check network congestion**: Wait for lower network activity
+
+4. **Verify contract address**: Ensure Flow contract address is correct
+
+### IPFS Gateway Issues
+
+**Problem**: Cannot access uploaded files through IPFS gateway.
+
+**Solutions**:
+
+1. **Try alternative gateways**:
+   ```text
+   https://ipfs.io/ipfs/QmHash...
+   https://gateway.pinata.cloud/ipfs/QmHash...
+   https://cloudflare-ipfs.com/ipfs/QmHash...
+   ```
+
+2. **Wait for propagation**: IPFS content may take time to propagate
+
+3. **Check file hash**: Verify the IPFS hash is correct
+
+## Development Issues
+
+### Plugin Not Loading
+
+**Problem**: ElizaOS doesn't recognize the 0G plugin.
+
+**Solutions**:
+
+1. **Verify installation**:
+   ```bash
+   npm list @elizaos/plugin-0g
+   ```
+
+2. **Check import statement**:
+   ```javascript
+   import { zgPlugin } from "@elizaos/plugin-0g";
+   ```
+
+3. **Register plugin correctly**:
+   ```javascript
+   const agent = new Agent({
+     plugins: [zgPlugin], // Ensure plugin is in array
+   });
+   ```
+
+### TypeScript Errors
+
+**Problem**: Type definition conflicts or missing types.
+
+**Solutions**:
+
+1. **Update TypeScript**:
+   ```bash
+   npm update typescript
+   ```
+
+2. **Install type definitions**:
+   ```bash
+   npm install --save-dev @types/node
+   ```
+
+3. **Check tsconfig.json**:
+   ```json
+   {
+     "compilerOptions": {
+       "moduleResolution": "node",
+       "esModuleInterop": true
+     }
+   }
+   ```
+
+## Performance Optimization
+
+### Slow Upload Speeds
+
+**Solutions**:
+
+1. **Compress files before upload**:
+   ```javascript
+   import { gzip } from 'zlib';
+   
+   const compressedFile = await gzip(fileBuffer);
+   ```
+
+2. **Use parallel uploads** for multiple files
+
+3. **Implement retry logic** for failed uploads
+
+4. **Cache frequently accessed files**
+
+### Memory Issues
+
+**Solutions**:
+
+1. **Stream large files** instead of loading into memory
+
+2. **Implement file size limits**:
+   ```javascript
+   const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
+   ```
+
+3. **Clean up temporary files** after upload
+
+## Getting Help
+
+If you continue to experience issues:
+
+1. **Check the logs**: Enable debug logging for detailed error information
+
+2. **Community Support**: 
+   - [Discord Community](https://discord.gg/0g)
+   - [GitHub Issues](https://github.com/elizaOS/eliza/issues)
+
+3. **Documentation**: 
+   - [0G Documentation](https://docs.0g.ai)
+   - [ElizaOS Documentation](https://docs.elizaos.ai)
+
+4. **Contact Support**: [support@0g.ai](mailto:support@0g.ai)
+
+## Debug Mode
+
+Enable debug logging to get more detailed error information:
+
+```javascript
+// Set environment variable
+process.env.DEBUG = "elizaos:plugin:0g";
+
+// Or in .env file
+DEBUG=elizaos:plugin:0g
+```
+
+This will provide detailed logs of plugin operations and help identify issues.

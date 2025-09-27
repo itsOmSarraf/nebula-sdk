@@ -1,0 +1,154 @@
+{
+  "$schema": "https://mintlify.com/schema.json",
+  "name": "0G AI SDK",
+  "logo": {
+    "dark": "/logo/dark.svg",
+    "light": "/logo/light.svg"
+  },
+  "favicon": "/favicon.svg",
+  "colors": {
+    "primary": "#0D9373",
+    "light": "#07C983",
+    "dark": "#0D9373",
+    "anchors": {
+      "from": "#0D9373",
+      "to": "#07C983"
+    }
+  },
+  "topbarLinks": [
+    {
+      "name": "Support",
+      "url": "mailto:support@0g.ai"
+    }
+  ],
+  "topbarCtaButton": {
+    "name": "Dashboard",
+    "url": "https://dashboard.0g.ai"
+  },
+  "tabs": [
+    {
+      "name": "API Reference",
+      "url": "api-reference"
+    },
+    {
+      "name": "Providers",
+      "url": "providers"
+    },
+    {
+      "name": "ElizaOS Plugin",
+      "url": "elizaos-plugin"
+    },
+    {
+      "name": "MCP Server",
+      "url": "mcp-server"
+    }
+  ],
+  "anchors": [
+    {
+      "name": "Documentation",
+      "icon": "book-open-cover",
+      "url": "https://docs.0g.ai"
+    },
+    {
+      "name": "Community",
+      "icon": "slack",
+      "url": "https://discord.gg/0g"
+    },
+    {
+      "name": "Blog",
+      "icon": "newspaper",
+      "url": "https://blog.0g.ai"
+    }
+  ],
+  "navigation": [
+    {
+      "group": "Get Started",
+      "pages": [
+        "introduction",
+        "quickstart",
+        "development"
+      ]
+    },
+    {
+      "group": "Essentials",
+      "pages": [
+        "essentials/chat",
+        "essentials/memory",
+        "essentials/agents",
+        "essentials/storage"
+      ]
+    },
+    {
+      "group": "Integrations",
+      "pages": [
+        "integrations/providers"
+      ]
+    },
+    {
+      "group": "API Documentation",
+      "pages": [
+        "api-reference/introduction"
+      ]
+    },
+    {
+      "group": "Chat API",
+      "pages": [
+        "api-reference/chat/create",
+        "api-reference/chat/stream",
+        "api-reference/chat/history"
+      ]
+    },
+    {
+      "group": "Memory API",
+      "pages": [
+        "api-reference/memory/store",
+        "api-reference/memory/retrieve",
+        "api-reference/memory/search"
+      ]
+    },
+    {
+      "group": "Agent API",
+      "pages": [
+        "api-reference/agent/create",
+        "api-reference/agent/execute",
+        "api-reference/agent/tools"
+      ]
+    },
+    {
+      "group": "Framework Providers",
+      "pages": [
+        "providers/langchain",
+        "providers/vercel-ai-sdk", 
+        "providers/openrouter",
+        "providers/llamaindex"
+      ]
+    },
+    {
+      "group": "ElizaOS Plugin",
+      "pages": [
+        "elizaos-plugin/overview",
+        "elizaos-plugin/installation",
+        "elizaos-plugin/configuration",
+        "elizaos-plugin/usage",
+        "elizaos-plugin/api-reference",
+        "elizaos-plugin/troubleshooting"
+      ]
+    },
+    {
+      "group": "MCP Server",
+      "pages": [
+        "mcp-server/overview",
+        "mcp-server/installation",
+        "mcp-server/features",
+        "mcp-server/tools",
+        "mcp-server/integration",
+        "mcp-server/development"
+      ]
+    }
+  ],
+  "footerSocials": {
+    "x": "https://x.com/0glabs",
+    "github": "https://github.com/0glabs",
+    "linkedin": "https://www.linkedin.com/company/0glabs"
+  }
+}

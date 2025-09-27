@@ -1,0 +1,357 @@
+# Store Memory
+
+Store data persistently in the 0G decentralized storage network for AI agents and applications.
+
+## Method
+
+```typescript
+memory.store(entry: MemoryEntry): Promise<MemoryResult>
+```
+
+### Parameters
+
+<ParamField path="entry" type="MemoryEntry" required>
+  The memory entry to store
+</ParamField>
+
+<ParamField path="entry.key" type="string" required>
+  Unique identifier for the memory entry
+</ParamField>
+
+<ParamField path="entry.value" type="any" required>
+  The data to store (will be JSON serialized)
+</ParamField>
+
+<ParamField path="entry.metadata" type="Record<string, any>">
+  Additional metadata for the entry
+</ParamField>
+
+<ParamField path="entry.tags" type="string[]">
+  Tags for categorizing and searching the entry
+</ParamField>
+
+<ParamField path="entry.ttl" type="number">
+  Time-to-live in seconds (optional expiration)
+</ParamField>
+
+## Response
+
+<ResponseField name="success" type="boolean">
+  Whether the storage operation succeeded
+</ResponseField>
+
+<ResponseField name="key" type="string">
+  The key of the stored entry
+</ResponseField>
+
+<ResponseField name="hash" type="string">
+  The content hash on the 0G network
+</ResponseField>
+
+<ResponseField name="timestamp" type="Date">
+  When the entry was stored
+</ResponseField>
+
+<ResponseField name="size" type="number">
+  Size of the stored data in bytes
+</ResponseField>
+
+## Examples
+
+<CodeGroup>
+
+```typescript Basic Storage
+import { Memory } from '0g-ai-sdk';
+
+const memory = new Memory({
+  storageKey: 'user-session-123',
+  apiKey: 'your-api-key'
+});
+
+// Store simple data
+const result = await memory.store({
+  key: 'user_preferences',
+  value: {
+    theme: 'dark',
+    language: 'en',
+    notifications: true
+  }
+});
+
+console.log('Stored successfully:', result.success);
+console.log('Content hash:', result.hash);
+```
+
+```typescript With Metadata and Tags
+// Store with rich metadata
+const result = await memory.store({
+  key: 'conversation_summary_001',
+  value: {
+    summary: 'User asked about TypeScript best practices',
+    keyPoints: ['Type safety', 'Interface design', 'Generic usage'],
+    sentiment: 'positive'
+  },
+  metadata: {
+    userId: 'user123',
+    sessionId: 'session456',
+    model: 'llama-3.3-70b-instruct',
+    confidence: 0.95
+  },
+  tags: ['conversation', 'typescript', 'programming', 'summary'],
+  ttl: 86400 // Expire after 24 hours
+});
+```
+
+```typescript Batch Storage
+// Store multiple entries
+const entries = [
+  {
+    key: 'skill_javascript',
+    value: { level: 'advanced', lastUsed: new Date() },
+    tags: ['skill', 'programming']
+  },
+  {
+    key: 'skill_python',
+    value: { level: 'intermediate', lastUsed: new Date() },
+    tags: ['skill', 'programming']
+  },
+  {
+    key: 'preference_coding_style',
+    value: { style: 'functional', framework: 'react' },
+    tags: ['preference', 'coding']
+  }
+];
+
+const results = await Promise.all(
+  entries.map(entry => memory.store(entry))
+);
+
+console.log(`Stored ${results.filter(r => r.success).length} entries`);
+```
+
+</CodeGroup>
+
+## Advanced Usage
+
+### Conditional Storage
+
+```typescript
+// Only store if key doesn't exist
+try {
+  const existing = await memory.retrieve('user_profile');
+  if (!existing) {
+    await memory.store({
+      key: 'user_profile',
+      value: { name: 'John', age: 30 }
+    });
+  }
+} catch (error) {
+  // Key doesn't exist, safe to store
+  await memory.store({
+    key: 'user_profile',
+    value: { name: 'John', age: 30 }
+  });
+}
+```
+
+### Versioned Storage
+
+```typescript
+// Store with version control
+const version = Date.now();
+const result = await memory.store({
+  key: `document_v${version}`,
+  value: {
+    content: 'Updated document content',
+    version: version,
+    previousVersion: 'document_v1234567890'
+  },
+  metadata: {
+    author: 'user123',
+    changeType: 'content_update'
+  },
+  tags: ['document', 'versioned']
+});
+
+// Also update the "latest" pointer
+await memory.store({
+  key: 'document_latest',
+  value: { currentVersion: `document_v${version}` }
+});
+```
+
+### Large Data Storage
+
+```typescript
+// Store large objects efficiently
+const largeDataset = {
+  // ... large data object
+};
+
+// Compress before storing (optional)
+const compressed = JSON.stringify(largeDataset);
+
+const result = await memory.store({
+  key: 'large_dataset_001',
+  value: largeDataset,
+  metadata: {
+    originalSize: JSON.stringify(largeDataset).length,
+    compressed: false,
+    dataType: 'training_data'
+  },
+  tags: ['dataset', 'large', 'training']
+});
+
+if (result.size > 1024 * 1024) { // 1MB
+  console.warn('Large storage detected:', result.size, 'bytes');
+}
+```
+
+## Error Handling
+
+```typescript
+try {
+  const result = await memory.store({
+    key: 'test_data',
+    value: { message: 'Hello World' }
+  });
+  
+  if (!result.success) {
+    console.error('Storage failed');
+  }
+} catch (error) {
+  switch (error.code) {
+    case 'STORAGE_QUOTA_EXCEEDED':
+      console.error('Storage quota exceeded');
+      break;
+    case 'INVALID_KEY':
+      console.error('Invalid key format');
+      break;
+    case 'NETWORK_ERROR':
+      console.error('Network connection failed');
+      break;
+    case 'SERIALIZATION_ERROR':
+      console.error('Data cannot be serialized');
+      break;
+    default:
+      console.error('Unexpected error:', error.message);
+  }
+}
+```
+
+## Storage Patterns
+
+### Cache Pattern
+
+```typescript
+class MemoryCache {
+  constructor(private memory: Memory) {}
+  
+  async set(key: string, value: any, ttl: number = 3600) {
+    return await this.memory.store({
+      key: `cache:${key}`,
+      value,
+      ttl,
+      tags: ['cache']
+    });
+  }
+  
+  async get(key: string) {
+    try {
+      const result = await this.memory.retrieve(`cache:${key}`);
+      return result?.value;
+    } catch {
+      return null;
+    }
+  }
+}
+
+const cache = new MemoryCache(memory);
+await cache.set('api_response', { data: 'cached' }, 1800);
+```
+
+### Event Sourcing
+
+```typescript
+// Store events for replay
+async function storeEvent(eventType: string, eventData: any) {
+  const eventId = `event_${Date.now()}_${Math.random()}`;
+  
+  return await memory.store({
+    key: eventId,
+    value: {
+      type: eventType,
+      data: eventData,
+      timestamp: new Date()
+    },
+    metadata: {
+      eventType,
+      aggregateId: eventData.aggregateId
+    },
+    tags: ['event', eventType]
+  });
+}
+
+await storeEvent('user_registered', {
+  aggregateId: 'user123',
+  email: 'user@example.com'
+});
+```
+
+## Best Practices
+
+### Key Naming
+
+```typescript
+// Use consistent key naming patterns
+const keyPatterns = {
+  user: (id: string) => `user:${id}`,
+  session: (id: string) => `session:${id}`,
+  cache: (key: string) => `cache:${key}`,
+  config: (name: string) => `config:${name}`,
+  temp: (id: string) => `temp:${id}`
+};
+
+await memory.store({
+  key: keyPatterns.user('123'),
+  value: { name: 'John' }
+});
+```
+
+### Data Validation
+
+```typescript
+function validateMemoryEntry(entry: MemoryEntry): boolean {
+  if (!entry.key || typeof entry.key !== 'string') {
+    throw new Error('Invalid key');
+  }
+  
+  if (entry.key.length > 255) {
+    throw new Error('Key too long');
+  }
+  
+  if (entry.value === undefined) {
+    throw new Error('Value is required');
+  }
+  
+  return true;
+}
+
+// Use before storing
+validateMemoryEntry(entry);
+await memory.store(entry);
+```
+
+## Performance Tips
+
+1. **Batch operations** when storing multiple entries
+2. **Use appropriate TTL** to prevent storage bloat
+3. **Compress large data** before storing
+4. **Use tags efficiently** for better search performance
+5. **Monitor storage usage** to avoid quota issues
+
+## Related
+
+- [Retrieve Memory](/api-reference/memory/retrieve)
+- [Search Memory](/api-reference/memory/search)
+- [Chat Integration](/api-reference/chat/create)

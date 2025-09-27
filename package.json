@@ -1,0 +1,35 @@
+{
+  "name": "0g-ai-sdk",
+  "version": "1.0.0",
+  "description": "TypeScript SDK for 0G AI with Chat and Memory capabilities",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "0g",
+    "ai",
+    "sdk",
+    "chat",
+    "memory",
+    "blockchain",
+    "typescript"
+  ],
+  "author": "Om Sarraf",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "@0glabs/0g-ts-sdk": "^0.3.1",
+    "ethers": "^6.13.1",
+    "node-fetch": "^3.3.0"
+  },
+  "files": [
+    "dist/**/*"
+  ]
+}

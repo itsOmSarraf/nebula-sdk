@@ -1,0 +1,104 @@
+---
+title: "MCP Server Overview"
+description: "An MCP (Model Context Protocol) server for interacting with the 0G Galileo testnet blockchain"
+---
+
+# MCP 0G Server
+
+An MCP (Model Context Protocol) server for interacting with the 0G Galileo testnet blockchain. This server enables AI assistants like Claude to interact directly with the 0G blockchain network.
+
+## What is MCP?
+
+Model Context Protocol (MCP) is a standard that allows AI assistants to connect to external systems and services. The 0G MCP server implements this protocol to provide blockchain functionality to AI models.
+
+## 0G Chain Information
+
+- **Network**: 0G Galileo testnet
+- **Chain ID**: 16601
+- **RPC URL**: https://evmrpc-testnet.0g.ai
+- **Native Token**: OG
+- **Block Explorer**: https://chainscan-galileo.0g.ai
+- **Faucet**: https://faucet.0g.ai
+
+## Key Features
+
+### Blockchain Queries
+- Get chain information and network status
+- Query blocks and transactions
+- Check OG token balances
+- Get current gas prices and estimate transaction costs
+- Call smart contracts (read-only operations)
+- Query event logs and transaction history
+- Access faucet information for testnet tokens
+
+### Wallet Management
+- Create new wallets with secure encryption
+- Import wallets from private keys or seed phrases
+- HD wallet support (BIP44) for multiple addresses
+- Secure encrypted storage with password protection
+- Export wallet information (public data only)
+
+### Transaction Management
+- Preview transactions with gas estimation
+- Transaction approval workflows with security policies
+- Batch transaction support for efficiency
+- Transaction simulation before sending
+- Track transaction status and confirmations
+- Replace transactions (speed up or cancel)
+
+### Token Management
+- Complete ERC-20 token support (transfer, approve, allowance)
+- Token metadata discovery and validation
+- Portfolio tracking with analytics and insights
+- Token security policies and risk assessment
+- Token watchlist and discovery features
+
+### Smart Contract Deployment
+- Compile Solidity contracts from source code
+- Deploy contracts with constructor arguments
+- Estimate deployment costs before executing
+- Verify deployed contracts match source code
+- Track deployment history across networks
+
+## Architecture
+
+The MCP server is built with:
+
+- **TypeScript**: Type-safe development
+- **ethers.js v6**: Blockchain interaction library
+- **Zod**: Input validation and schema enforcement
+- **Node.js crypto**: Secure wallet encryption
+- **MCP Protocol**: Standard AI assistant integration
+
+## Use Cases
+
+### AI-Powered Blockchain Interaction
+- Natural language blockchain queries
+- Automated transaction management
+- Smart contract interaction through conversation
+- Portfolio monitoring and analysis
+
+### Development Tools
+- Contract deployment and verification
+- Transaction debugging and simulation
+- Wallet management for development
+- Testnet token acquisition
+
+### DeFi Operations
+- Token transfers and approvals
+- Portfolio tracking and analytics
+- Batch operations for efficiency
+- Risk assessment and security policies
+
+## Security Features
+
+- **Encrypted Storage**: Wallets stored with AES-256-CBC encryption
+- **Approval Workflows**: Require approval for sensitive operations
+- **Daily Limits**: Set maximum daily transaction amounts
+- **Whitelisting**: Auto-approve transactions to trusted addresses
+- **Input Validation**: Comprehensive validation of all inputs
+- **Error Handling**: Clear error messages with helpful suggestions
+
+## Getting Started
+
+Ready to integrate 0G blockchain functionality with AI assistants? Check out our [installation guide](/mcp-server/installation) to get started.

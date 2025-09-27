@@ -1,0 +1,725 @@
+---
+title: "Development Guide"
+description: "Guide for developing and extending the MCP 0G Server"
+---
+
+# Development Guide
+
+This guide covers how to develop, extend, and contribute to the MCP 0G Server.
+
+## Development Setup
+
+### Prerequisites
+
+- Node.js 18.0 or higher
+- TypeScript 4.9 or higher
+- Git for version control
+- Code editor (VS Code recommended)
+
+### Local Development
+
+1. **Clone Repository**
+
+   ```bash
+   git clone https://github.com/0gfoundation/mcp-0g.git
+   cd mcp-0g
+   ```
+
+2. **Install Dependencies**
+
+   ```bash
+   npm install
+   ```
+
+3. **Environment Setup**
+
+   ```bash
+   cp .env.example .env
+   # Edit .env with your configuration
+   ```
+
+4. **Development Mode**
+
+   ```bash
+   npm run dev
+   ```
+
+   This starts the server with auto-reload on file changes.
+
+### Project Structure
+
+```
+mcp-0g/
+├── src/                    # Source code
+│   ├── tools/             # MCP tool implementations
+│   ├── services/          # Business logic services
+│   ├── utils/             # Utility functions
+│   ├── types/             # TypeScript type definitions
+│   └── index.ts           # Main server entry point
+├── docs/                  # Documentation
+├── examples/              # Usage examples
+├── tests/                 # Test files
+├── dist/                  # Compiled JavaScript
+└── package.json           # Project configuration
+```
+
+## Architecture Overview
+
+### Core Components
+
+#### MCP Server
+The main server implements the Model Context Protocol specification:
+
+```typescript
+// src/index.ts
+import { Server } from '@modelcontextprotocol/sdk/server/index.js';
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+
+const server = new Server({
+  name: "0g-mcp-server",
+  version: "1.0.0"
+}, {
+  capabilities: {
+    tools: {}
+  }
+});
+```
+
+#### Tool Registry
+Tools are registered with the MCP server:
+
+```typescript
+// Tool registration
+server.setRequestHandler(ListToolsRequestSchema, async () => {
+  return {
+    tools: [
+      {
+        name: "get_chain_info",
+        description: "Get 0G chain information",
+        inputSchema: {
+          type: "object",
+          properties: {}
+        }
+      }
+      // ... more tools
+    ]
+  };
+});
+```
+
+#### Service Layer
+Business logic is organized into services:
+
+```typescript
+// src/services/BlockchainService.ts
+export class BlockchainService {
+  constructor(private provider: ethers.Provider) {}
+
+  async getChainInfo(): Promise<ChainInfo> {
+    const network = await this.provider.getNetwork();
+    const blockNumber = await this.provider.getBlockNumber();
+    
+    return {
+      chainId: network.chainId,
+      blockNumber,
+      networkName: network.name
+    };
+  }
+}
+```
+
+## Adding New Tools
+
+### Tool Structure
+
+Each tool follows this pattern:
+
+```typescript
+// src/tools/ExampleTool.ts
+import { z } from 'zod';
+
+// Input validation schema
+export const ExampleToolSchema = z.object({
+  parameter1: z.string(),
+  parameter2: z.number().optional()
+});
+
+// Tool implementation
+export async function exampleTool(
+  input: z.infer<typeof ExampleToolSchema>
+): Promise<any> {
+  // Validate input
+  const validated = ExampleToolSchema.parse(input);
+  
+  // Business logic
+  const result = await performOperation(validated);
+  
+  return result;
+}
+
+// Tool metadata
+export const exampleToolMetadata = {
+  name: "example_tool",
+  description: "Example tool description",
+  inputSchema: ExampleToolSchema.schema
+};
+```
+
+### Registration Process
+
+1. **Create Tool File**
+
+   Create a new file in `src/tools/` following the naming convention.
+
+2. **Implement Tool Logic**
+
+   ```typescript
+   // src/tools/NewTool.ts
+   import { z } from 'zod';
+   import { BlockchainService } from '../services/BlockchainService.js';
+
+   export const NewToolSchema = z.object({
+     address: z.string().regex(/^0x[a-fA-F0-9]{40}$/, "Invalid address format")
+   });
+
+   export async function newTool(
+     input: z.infer<typeof NewToolSchema>,
+     blockchainService: BlockchainService
+   ): Promise<any> {
+     const { address } = NewToolSchema.parse(input);
+     
+     // Your logic here
+     const result = await blockchainService.someOperation(address);
+     
+     return {
+       success: true,
+       data: result
+     };
+   }
+
+   export const newToolMetadata = {
+     name: "new_tool",
+     description: "Description of what this tool does",
+     inputSchema: NewToolSchema.schema
+   };
+   ```
+
+3. **Register Tool**
+
+   Add to the tool registry:
+
+   ```typescript
+   // src/index.ts
+   import { newTool, newToolMetadata } from './tools/NewTool.js';
+
+   // Add to tools list
+   const tools = [
+     // ... existing tools
+     newToolMetadata
+   ];
+
+   // Add to call handler
+   server.setRequestHandler(CallToolRequestSchema, async (request) => {
+     const { name, arguments: args } = request.params;
+     
+     switch (name) {
+       // ... existing cases
+       case "new_tool":
+         return { content: [{ type: "text", text: JSON.stringify(await newTool(args, blockchainService)) }] };
+       
+       default:
+         throw new McpError(ErrorCode.MethodNotFound, `Tool not found: ${name}`);
+     }
+   });
+   ```
+
+### Best Practices for Tools
+
+#### Input Validation
+
+Always validate inputs using Zod schemas:
+
+```typescript
+const ToolSchema = z.object({
+  address: z.string().regex(/^0x[a-fA-F0-9]{40}$/),
+  amount: z.string().regex(/^\d+$/),
+  gasLimit: z.number().min(21000).optional()
+});
+```
+
+#### Error Handling
+
+Implement comprehensive error handling:
+
+```typescript
+export async function toolFunction(input: any): Promise<any> {
+  try {
+    const validated = ToolSchema.parse(input);
+    const result = await performOperation(validated);
+    return { success: true, data: result };
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      throw new McpError(ErrorCode.InvalidParams, `Validation error: ${error.message}`);
+    }
+    if (error instanceof Error) {
+      throw new McpError(ErrorCode.InternalError, error.message);
+    }
+    throw new McpError(ErrorCode.InternalError, "Unknown error occurred");
+  }
+}
+```
+
+#### Async Operations
+
+Handle async operations properly:
+
+```typescript
+export async function asyncTool(input: any): Promise<any> {
+  const validated = ToolSchema.parse(input);
+  
+  // Use Promise.all for parallel operations
+  const [balance, nonce] = await Promise.all([
+    provider.getBalance(validated.address),
+    provider.getTransactionCount(validated.address)
+  ]);
+  
+  return { balance: balance.toString(), nonce };
+}
+```
+
+## Service Development
+
+### Creating Services
+
+Services encapsulate business logic:
+
+```typescript
+// src/services/TokenService.ts
+export class TokenService {
+  constructor(
+    private provider: ethers.Provider,
+    private signer?: ethers.Signer
+  ) {}
+
+  async getTokenMetadata(tokenAddress: string): Promise<TokenMetadata> {
+    const contract = new ethers.Contract(tokenAddress, ERC20_ABI, this.provider);
+    
+    const [name, symbol, decimals] = await Promise.all([
+      contract.name(),
+      contract.symbol(),
+      contract.decimals()
+    ]);
+
+    return { name, symbol, decimals };
+  }
+
+  async transferToken(
+    tokenAddress: string,
+    to: string,
+    amount: string
+  ): Promise<string> {
+    if (!this.signer) {
+      throw new Error("Signer required for token transfer");
+    }
+
+    const contract = new ethers.Contract(tokenAddress, ERC20_ABI, this.signer);
+    const tx = await contract.transfer(to, amount);
+    
+    return tx.hash;
+  }
+}
+```
+
+### Service Integration
+
+Integrate services with dependency injection:
+
+```typescript
+// src/index.ts
+const provider = new ethers.JsonRpcProvider(process.env.ZEROQ_RPC_URL);
+const blockchainService = new BlockchainService(provider);
+const tokenService = new TokenService(provider);
+const walletService = new WalletService();
+
+// Pass services to tools
+server.setRequestHandler(CallToolRequestSchema, async (request) => {
+  const { name, arguments: args } = request.params;
+  
+  switch (name) {
+    case "get_token_metadata":
+      return { 
+        content: [{ 
+          type: "text", 
+          text: JSON.stringify(await getTokenMetadata(args, tokenService)) 
+        }] 
+      };
+    // ... other cases
+  }
+});
+```
+
+## Testing
+
+### Unit Tests
+
+Write unit tests for tools and services:
+
+```typescript
+// tests/tools/GetBalance.test.ts
+import { describe, it, expect, beforeEach } from 'vitest';
+import { getBalance } from '../../src/tools/GetBalance.js';
+import { BlockchainService } from '../../src/services/BlockchainService.js';
+
+describe('GetBalance Tool', () => {
+  let mockService: jest.Mocked<BlockchainService>;
+
+  beforeEach(() => {
+    mockService = {
+      getBalance: jest.fn()
+    } as any;
+  });
+
+  it('should return balance for valid address', async () => {
+    const mockBalance = '1000000000000000000'; // 1 ETH in wei
+    mockService.getBalance.mockResolvedValue(mockBalance);
+
+    const result = await getBalance(
+      { address: '0x742d35Cc6634C0532925a3b8D4C9db96590c6C87' },
+      mockService
+    );
+
+    expect(result.balance).toBe(mockBalance);
+    expect(mockService.getBalance).toHaveBeenCalledWith('0x742d35Cc6634C0532925a3b8D4C9db96590c6C87');
+  });
+
+  it('should throw error for invalid address', async () => {
+    await expect(getBalance(
+      { address: 'invalid-address' },
+      mockService
+    )).rejects.toThrow('Invalid address format');
+  });
+});
+```
+
+### Integration Tests
+
+Test complete workflows:
+
+```typescript
+// tests/integration/WalletFlow.test.ts
+import { describe, it, expect } from 'vitest';
+import { createWallet, getWallet } from '../../src/tools/WalletTools.js';
+
+describe('Wallet Integration', () => {
+  it('should create and retrieve wallet', async () => {
+    const walletName = 'test-wallet';
+    const password = 'secure-password';
+
+    // Create wallet
+    const createResult = await createWallet({
+      name: walletName,
+      password
+    });
+
+    expect(createResult.success).toBe(true);
+    expect(createResult.address).toMatch(/^0x[a-fA-F0-9]{40}$/);
+
+    // Retrieve wallet
+    const getResult = await getWallet({
+      name: walletName
+    });
+
+    expect(getResult.name).toBe(walletName);
+    expect(getResult.address).toBe(createResult.address);
+  });
+});
+```
+
+### Running Tests
+
+```bash
+# Run all tests
+npm test
+
+# Run with coverage
+npm run test:coverage
+
+# Run specific test file
+npm test -- GetBalance.test.ts
+
+# Watch mode for development
+npm run test:watch
+```
+
+## Configuration Management
+
+### Environment Variables
+
+Define configuration schema:
+
+```typescript
+// src/config/index.ts
+import { z } from 'zod';
+
+const ConfigSchema = z.object({
+  ZEROQ_RPC_URL: z.string().url(),
+  RATE_LIMIT_REQUESTS: z.string().transform(Number).pipe(z.number().min(1)),
+  RATE_LIMIT_WINDOW: z.string().transform(Number).pipe(z.number().min(1000)),
+  LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info')
+});
+
+export const config = ConfigSchema.parse(process.env);
+```
+
+### Feature Flags
+
+Implement feature flags for gradual rollouts:
+
+```typescript
+// src/config/features.ts
+export const features = {
+  ENABLE_CONTRACT_DEPLOYMENT: process.env.ENABLE_CONTRACT_DEPLOYMENT === 'true',
+  ENABLE_BATCH_OPERATIONS: process.env.ENABLE_BATCH_OPERATIONS === 'true',
+  MAX_BATCH_SIZE: parseInt(process.env.MAX_BATCH_SIZE || '10')
+};
+```
+
+## Logging and Monitoring
+
+### Structured Logging
+
+Implement structured logging:
+
+```typescript
+// src/utils/logger.ts
+import winston from 'winston';
+
+export const logger = winston.createLogger({
+  level: process.env.LOG_LEVEL || 'info',
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.errors({ stack: true }),
+    winston.format.json()
+  ),
+  transports: [
+    new winston.transports.Console(),
+    new winston.transports.File({ filename: 'logs/mcp-server.log' })
+  ]
+});
+```
+
+### Metrics Collection
+
+Add metrics for monitoring:
+
+```typescript
+// src/utils/metrics.ts
+export class Metrics {
+  private static toolCallCount = new Map<string, number>();
+  private static errorCount = new Map<string, number>();
+
+  static incrementToolCall(toolName: string): void {
+    const current = this.toolCallCount.get(toolName) || 0;
+    this.toolCallCount.set(toolName, current + 1);
+  }
+
+  static incrementError(errorType: string): void {
+    const current = this.errorCount.get(errorType) || 0;
+    this.errorCount.set(errorType, current + 1);
+  }
+
+  static getMetrics(): any {
+    return {
+      toolCalls: Object.fromEntries(this.toolCallCount),
+      errors: Object.fromEntries(this.errorCount)
+    };
+  }
+}
+```
+
+## Security Considerations
+
+### Input Sanitization
+
+Always sanitize and validate inputs:
+
+```typescript
+import { z } from 'zod';
+import { ethers } from 'ethers';
+
+const AddressSchema = z.string().refine((addr) => {
+  return ethers.isAddress(addr);
+}, "Invalid Ethereum address");
+
+const AmountSchema = z.string().refine((amount) => {
+  try {
+    ethers.parseEther(amount);
+    return true;
+  } catch {
+    return false;
+  }
+}, "Invalid amount format");
+```
+
+### Rate Limiting
+
+Implement rate limiting:
+
+```typescript
+// src/middleware/rateLimit.ts
+export class RateLimiter {
+  private requests = new Map<string, number[]>();
+
+  isAllowed(clientId: string, maxRequests: number, windowMs: number): boolean {
+    const now = Date.now();
+    const clientRequests = this.requests.get(clientId) || [];
+    
+    // Remove old requests outside the window
+    const validRequests = clientRequests.filter(time => now - time < windowMs);
+    
+    if (validRequests.length >= maxRequests) {
+      return false;
+    }
+    
+    validRequests.push(now);
+    this.requests.set(clientId, validRequests);
+    
+    return true;
+  }
+}
+```
+
+### Secure Storage
+
+Implement secure storage for sensitive data:
+
+```typescript
+// src/utils/encryption.ts
+import crypto from 'crypto';
+
+export class SecureStorage {
+  private static readonly ALGORITHM = 'aes-256-cbc';
+
+  static encrypt(text: string, password: string): string {
+    const key = crypto.scryptSync(password, 'salt', 32);
+    const iv = crypto.randomBytes(16);
+    const cipher = crypto.createCipher(this.ALGORITHM, key);
+    
+    let encrypted = cipher.update(text, 'utf8', 'hex');
+    encrypted += cipher.final('hex');
+    
+    return iv.toString('hex') + ':' + encrypted;
+  }
+
+  static decrypt(encryptedText: string, password: string): string {
+    const [ivHex, encrypted] = encryptedText.split(':');
+    const key = crypto.scryptSync(password, 'salt', 32);
+    const iv = Buffer.from(ivHex, 'hex');
+    const decipher = crypto.createDecipher(this.ALGORITHM, key);
+    
+    let decrypted = decipher.update(encrypted, 'hex', 'utf8');
+    decrypted += decipher.final('utf8');
+    
+    return decrypted;
+  }
+}
+```
+
+## Contributing
+
+### Code Style
+
+Follow the established code style:
+
+```typescript
+// Use TypeScript strict mode
+// Prefer async/await over promises
+// Use meaningful variable names
+// Add JSDoc comments for public APIs
+
+/**
+ * Gets the balance of an address
+ * @param address - The Ethereum address to check
+ * @returns Promise resolving to balance in wei
+ */
+export async function getBalance(address: string): Promise<string> {
+  // Implementation
+}
+```
+
+### Pull Request Process
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests for new functionality
+5. Ensure all tests pass
+6. Submit a pull request
+
+### Documentation
+
+Update documentation for new features:
+
+- Add tool documentation to the appropriate files
+- Update API references
+- Include usage examples
+- Update integration guides if needed
+
+## Deployment
+
+### Production Build
+
+```bash
+# Clean previous build
+npm run clean
+
+# Build for production
+npm run build
+
+# Verify build
+node dist/index.js --version
+```
+
+### Docker Deployment
+
+Create a Dockerfile:
+
+```dockerfile
+FROM node:18-alpine
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm ci --only=production
+
+COPY dist/ ./dist/
+
+EXPOSE 3000
+
+CMD ["node", "dist/index.js"]
+```
+
+Build and run:
+
+```bash
+docker build -t mcp-0g-server .
+docker run -p 3000:3000 -e ZEROQ_RPC_URL=https://evmrpc-testnet.0g.ai mcp-0g-server
+```
+
+### Monitoring in Production
+
+Set up monitoring and alerting:
+
+```typescript
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.json({
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    memory: process.memoryUsage()
+  });
+});
+```
+
+This development guide provides the foundation for extending and contributing to the MCP 0G Server. For specific questions or advanced use cases, refer to the community resources and documentation.

@@ -1,0 +1,736 @@
+# Storage
+
+The 0G Storage system provides decentralized, persistent storage for AI applications, enabling secure and scalable data management across the 0G network.
+
+## Overview
+
+0G Storage offers:
+
+- **Decentralized Architecture**: No single point of failure
+- **High Availability**: Data replicated across multiple nodes
+- **Scalable**: Handles large datasets efficiently
+- **Secure**: End-to-end encryption and access controls
+- **Cost-effective**: Competitive pricing for storage and bandwidth
+- **Developer-friendly**: Simple APIs for integration
+
+## Core Components
+
+### ZGStorageClient
+
+The primary interface for interacting with the 0G storage network.
+
+```typescript
+import { ZGStorageClient } from '0g-ai-sdk';
+
+const storage = new ZGStorageClient({
+  rpcUrl: 'https://rpc.0g.ai',
+  privateKey: 'your-private-key', // or use wallet integration
+  flowContract: '0x...', // Flow contract address
+  mineContract: '0x...'  // Mine contract address
+});
+```
+
+### Configuration Options
+
+| Option | Type | Description |
+|--------|------|-------------|
+| `rpcUrl` | string | RPC endpoint for the 0G network |
+| `privateKey` | string | Private key for transaction signing |
+| `flowContract` | string | Address of the Flow contract |
+| `mineContract` | string | Address of the Mine contract |
+| `gasPrice` | string | Gas price for transactions |
+| `gasLimit` | number | Gas limit for transactions |
+
+## Basic Storage Operations
+
+### Upload Data
+
+```typescript
+// Upload a file
+const file = new File(['Hello, 0G Storage!'], 'hello.txt', { type: 'text/plain' });
+
+const uploadResult = await storage.upload(file, {
+  tags: ['greeting', 'text'],
+  metadata: {
+    author: 'user123',
+    version: '1.0'
+  }
+});
+
+console.log('File uploaded:', uploadResult.hash);
+console.log('Storage URL:', uploadResult.url);
+```
+
+### Upload from Buffer
+
+```typescript
+// Upload from buffer or string
+const data = Buffer.from('This is my data', 'utf8');
+
+const result = await storage.uploadBuffer(data, {
+  filename: 'data.txt',
+  contentType: 'text/plain',
+  tags: ['data', 'buffer']
+});
+```
+
+### Download Data
+
+```typescript
+// Download by hash
+const downloadedData = await storage.download(uploadResult.hash);
+console.log('Downloaded:', downloadedData.toString());
+
+// Download as stream for large files
+const stream = await storage.downloadStream(uploadResult.hash);
+stream.pipe(fs.createWriteStream('downloaded-file.txt'));
+```
+
+### List Files
+
+```typescript
+// List all files
+const files = await storage.listFiles({
+  limit: 50,
+  offset: 0
+});
+
+files.forEach(file => {
+  console.log(`${file.filename}: ${file.hash} (${file.size} bytes)`);
+});
+```
+
+## Advanced Features
+
+### Batch Operations
+
+```typescript
+// Upload multiple files
+const files = [
+  new File(['File 1 content'], 'file1.txt'),
+  new File(['File 2 content'], 'file2.txt'),
+  new File(['File 3 content'], 'file3.txt')
+];
+
+const batchResult = await storage.uploadBatch(files, {
+  tags: ['batch', 'upload'],
+  metadata: {
+    batchId: 'batch_001',
+    timestamp: new Date().toISOString()
+  }
+});
+
+console.log(`Uploaded ${batchResult.length} files`);
+batchResult.forEach((result, index) => {
+  console.log(`File ${index + 1}: ${result.hash}`);
+});
+```
+
+### File Versioning
+
+```typescript
+// Upload with version control
+class VersionedStorage {
+  constructor(private storage: ZGStorageClient) {}
+  
+  async uploadVersion(filename: string, data: Buffer | File, version?: string) {
+    const versionId = version || this.generateVersion();
+    
+    const result = await this.storage.upload(data, {
+      filename: `${filename}.v${versionId}`,
+      tags: ['versioned', filename],
+      metadata: {
+        originalFilename: filename,
+        version: versionId,
+        timestamp: new Date().toISOString()
+      }
+    });
+    
+    // Update latest version pointer
+    await this.updateLatestVersion(filename, versionId, result.hash);
+    
+    return { ...result, version: versionId };
+  }
+  
+  async getLatestVersion(filename: string) {
+    const versionInfo = await this.storage.getMetadata(`${filename}.latest`);
+    if (versionInfo) {
+      return await this.storage.download(versionInfo.hash);
+    }
+    throw new Error(`No versions found for ${filename}`);
+  }
+  
+  async listVersions(filename: string) {
+    const files = await this.storage.listFiles({
+      tags: ['versioned', filename]
+    });
+    
+    return files
+      .filter(f => f.metadata?.originalFilename === filename)
+      .sort((a, b) => new Date(b.metadata.timestamp) - new Date(a.metadata.timestamp));
+  }
+  
+  private generateVersion(): string {
+    return new Date().toISOString().replace(/[:.]/g, '-');
+  }
+  
+  private async updateLatestVersion(filename: string, version: string, hash: string) {
+    const pointer = {
+      filename,
+      version,
+      hash,
+      updatedAt: new Date().toISOString()
+    };
+    
+    await this.storage.uploadBuffer(
+      Buffer.from(JSON.stringify(pointer)),
+      {
+        filename: `${filename}.latest`,
+        contentType: 'application/json',
+        tags: ['version-pointer']
+      }
+    );
+  }
+}
+
+// Usage
+const versionedStorage = new VersionedStorage(storage);
+
+await versionedStorage.uploadVersion('document.txt', Buffer.from('Version 1'));
+await versionedStorage.uploadVersion('document.txt', Buffer.from('Version 2'));
+
+const latest = await versionedStorage.getLatestVersion('document.txt');
+const versions = await versionedStorage.listVersions('document.txt');
+```
+
+### Content Addressing
+
+```typescript
+// Content-addressed storage
+class ContentAddressedStorage {
+  constructor(private storage: ZGStorageClient) {}
+  
+  async storeContent(content: Buffer | string): Promise<string> {
+    const buffer = Buffer.isBuffer(content) ? content : Buffer.from(content);
+    const hash = this.calculateHash(buffer);
+    
+    // Check if content already exists
+    try {
+      await this.storage.getMetadata(hash);
+      return hash; // Content already exists
+    } catch {
+      // Content doesn't exist, upload it
+      const result = await this.storage.uploadBuffer(buffer, {
+        filename: hash,
+        tags: ['content-addressed'],
+        metadata: {
+          contentHash: hash,
+          size: buffer.length,
+          uploadedAt: new Date().toISOString()
+        }
+      });
+      
+      return result.hash;
+    }
+  }
+  
+  async getContent(hash: string): Promise<Buffer> {
+    return await this.storage.download(hash);
+  }
+  
+  private calculateHash(content: Buffer): string {
+    const crypto = require('crypto');
+    return crypto.createHash('sha256').update(content).digest('hex');
+  }
+}
+
+// Usage
+const cas = new ContentAddressedStorage(storage);
+
+const hash1 = await cas.storeContent('Hello, World!');
+const hash2 = await cas.storeContent('Hello, World!'); // Same content, same hash
+
+console.log(hash1 === hash2); // true - deduplication
+```
+
+## Integration with AI Components
+
+### Memory Storage Backend
+
+```typescript
+// Use 0G Storage as backend for Memory system
+class StorageBackedMemory {
+  constructor(
+    private storage: ZGStorageClient,
+    private namespace: string
+  ) {}
+  
+  async store(key: string, value: any, metadata?: any): Promise<void> {
+    const data = {
+      key,
+      value,
+      metadata,
+      timestamp: new Date().toISOString()
+    };
+    
+    const buffer = Buffer.from(JSON.stringify(data));
+    
+    await this.storage.uploadBuffer(buffer, {
+      filename: `${this.namespace}:${key}`,
+      contentType: 'application/json',
+      tags: ['memory', this.namespace, key],
+      metadata: {
+        namespace: this.namespace,
+        key,
+        ...metadata
+      }
+    });
+  }
+  
+  async retrieve(key: string): Promise<any> {
+    try {
+      const buffer = await this.storage.download(`${this.namespace}:${key}`);
+      const data = JSON.parse(buffer.toString());
+      return data.value;
+    } catch (error) {
+      return null;
+    }
+  }
+  
+  async search(query: { tags?: string[], metadata?: any }): Promise<any[]> {
+    const files = await this.storage.listFiles({
+      tags: ['memory', this.namespace, ...(query.tags || [])],
+      limit: 1000
+    });
+    
+    const results = [];
+    for (const file of files) {
+      if (this.matchesMetadata(file.metadata, query.metadata)) {
+        const content = await this.storage.download(file.hash);
+        const data = JSON.parse(content.toString());
+        results.push(data);
+      }
+    }
+    
+    return results;
+  }
+  
+  private matchesMetadata(fileMetadata: any, queryMetadata?: any): boolean {
+    if (!queryMetadata) return true;
+    
+    for (const [key, value] of Object.entries(queryMetadata)) {
+      if (fileMetadata[key] !== value) {
+        return false;
+      }
+    }
+    
+    return true;
+  }
+}
+
+// Usage with Memory system
+import { Memory } from '0g-ai-sdk';
+
+const storageMemory = new StorageBackedMemory(storage, 'agent-memory');
+
+// Use as custom backend for Memory
+const memory = new Memory({
+  storageKey: 'custom-backend',
+  customBackend: storageMemory
+});
+```
+
+### Large File Handling for Agents
+
+```typescript
+// Tool for agents to handle large files
+const largeFileTools = [
+  {
+    name: 'uploadLargeFile',
+    description: 'Upload a large file to decentralized storage',
+    parameters: {
+      type: 'object',
+      properties: {
+        filePath: { type: 'string', description: 'Path to the file to upload' },
+        tags: { type: 'array', items: { type: 'string' }, description: 'Tags for the file' }
+      },
+      required: ['filePath']
+    },
+    execute: async ({ filePath, tags = [] }) => {
+      const fs = require('fs');
+      const fileBuffer = fs.readFileSync(filePath);
+      const filename = require('path').basename(filePath);
+      
+      const result = await storage.uploadBuffer(fileBuffer, {
+        filename,
+        tags: ['large-file', ...tags],
+        metadata: {
+          originalPath: filePath,
+          size: fileBuffer.length,
+          uploadedAt: new Date().toISOString()
+        }
+      });
+      
+      return {
+        hash: result.hash,
+        url: result.url,
+        size: fileBuffer.length,
+        filename
+      };
+    }
+  },
+  {
+    name: 'downloadLargeFile',
+    description: 'Download a large file from decentralized storage',
+    parameters: {
+      type: 'object',
+      properties: {
+        hash: { type: 'string', description: 'Hash of the file to download' },
+        outputPath: { type: 'string', description: 'Where to save the downloaded file' }
+      },
+      required: ['hash', 'outputPath']
+    },
+    execute: async ({ hash, outputPath }) => {
+      const stream = await storage.downloadStream(hash);
+      const fs = require('fs');
+      const writeStream = fs.createWriteStream(outputPath);
+      
+      return new Promise((resolve, reject) => {
+        stream.pipe(writeStream);
+        writeStream.on('finish', () => {
+          resolve(`File downloaded to ${outputPath}`);
+        });
+        writeStream.on('error', reject);
+      });
+    }
+  }
+];
+
+// Create agent with large file capabilities
+const fileAgent = new Agent({
+  name: 'File Management Agent',
+  description: 'An agent that can handle large file operations',
+  tools: largeFileTools,
+  chat,
+  memory
+});
+```
+
+## Data Synchronization
+
+### Multi-Device Sync
+
+```typescript
+class MultiDeviceSync {
+  constructor(
+    private storage: ZGStorageClient,
+    private deviceId: string
+  ) {}
+  
+  async syncData(localData: any): Promise<void> {
+    // Upload local changes
+    const syncData = {
+      deviceId: this.deviceId,
+      data: localData,
+      timestamp: new Date().toISOString(),
+      version: this.generateVersion()
+    };
+    
+    await this.storage.uploadBuffer(
+      Buffer.from(JSON.stringify(syncData)),
+      {
+        filename: `sync:${this.deviceId}:${syncData.version}`,
+        tags: ['sync', this.deviceId],
+        metadata: {
+          deviceId: this.deviceId,
+          version: syncData.version,
+          timestamp: syncData.timestamp
+        }
+      }
+    );
+    
+    // Update latest sync pointer
+    await this.updateLatestSync(syncData.version);
+  }
+  
+  async getLatestSync(): Promise<any> {
+    try {
+      const pointer = await this.storage.download(`sync:${this.deviceId}:latest`);
+      const pointerData = JSON.parse(pointer.toString());
+      
+      const syncFile = await this.storage.download(`sync:${this.deviceId}:${pointerData.version}`);
+      return JSON.parse(syncFile.toString());
+    } catch {
+      return null;
+    }
+  }
+  
+  async getAllDeviceData(): Promise<any[]> {
+    const files = await this.storage.listFiles({
+      tags: ['sync'],
+      limit: 1000
+    });
+    
+    const deviceData = new Map();
+    
+    for (const file of files) {
+      if (file.metadata?.deviceId && !file.filename.endsWith(':latest')) {
+        const deviceId = file.metadata.deviceId;
+        const content = await this.storage.download(file.hash);
+        const data = JSON.parse(content.toString());
+        
+        if (!deviceData.has(deviceId) || 
+            new Date(data.timestamp) > new Date(deviceData.get(deviceId).timestamp)) {
+          deviceData.set(deviceId, data);
+        }
+      }
+    }
+    
+    return Array.from(deviceData.values());
+  }
+  
+  private generateVersion(): string {
+    return Date.now().toString();
+  }
+  
+  private async updateLatestSync(version: string): Promise<void> {
+    const pointer = {
+      deviceId: this.deviceId,
+      version,
+      updatedAt: new Date().toISOString()
+    };
+    
+    await this.storage.uploadBuffer(
+      Buffer.from(JSON.stringify(pointer)),
+      {
+        filename: `sync:${this.deviceId}:latest`,
+        tags: ['sync-pointer'],
+        metadata: { deviceId: this.deviceId }
+      }
+    );
+  }
+}
+
+// Usage
+const sync = new MultiDeviceSync(storage, 'device-123');
+
+// Sync local data
+await sync.syncData({ preferences: { theme: 'dark' }, lastActive: new Date() });
+
+// Get latest sync
+const latest = await sync.getLatestSync();
+
+// Get all device data for conflict resolution
+const allDevices = await sync.getAllDeviceData();
+```
+
+## Performance Optimization
+
+### Chunked Uploads
+
+```typescript
+class ChunkedUploader {
+  constructor(
+    private storage: ZGStorageClient,
+    private chunkSize: number = 1024 * 1024 // 1MB chunks
+  ) {}
+  
+  async uploadLargeFile(file: File | Buffer): Promise<string> {
+    const buffer = Buffer.isBuffer(file) ? file : Buffer.from(await file.arrayBuffer());
+    const totalChunks = Math.ceil(buffer.length / this.chunkSize);
+    const uploadId = this.generateUploadId();
+    
+    const chunkHashes: string[] = [];
+    
+    // Upload chunks in parallel
+    const chunkPromises = [];
+    for (let i = 0; i < totalChunks; i++) {
+      const start = i * this.chunkSize;
+      const end = Math.min(start + this.chunkSize, buffer.length);
+      const chunk = buffer.slice(start, end);
+      
+      chunkPromises.push(this.uploadChunk(uploadId, i, chunk));
+    }
+    
+    const results = await Promise.all(chunkPromises);
+    chunkHashes.push(...results);
+    
+    // Create manifest
+    const manifest = {
+      uploadId,
+      totalChunks,
+      chunkSize: this.chunkSize,
+      totalSize: buffer.length,
+      chunkHashes,
+      createdAt: new Date().toISOString()
+    };
+    
+    const manifestResult = await this.storage.uploadBuffer(
+      Buffer.from(JSON.stringify(manifest)),
+      {
+        filename: `manifest:${uploadId}`,
+        tags: ['chunked-upload', 'manifest'],
+        metadata: { uploadId, totalSize: buffer.length }
+      }
+    );
+    
+    return manifestResult.hash;
+  }
+  
+  async downloadLargeFile(manifestHash: string): Promise<Buffer> {
+    const manifestBuffer = await this.storage.download(manifestHash);
+    const manifest = JSON.parse(manifestBuffer.toString());
+    
+    // Download all chunks
+    const chunkPromises = manifest.chunkHashes.map((hash: string) =>
+      this.storage.download(hash)
+    );
+    
+    const chunks = await Promise.all(chunkPromises);
+    
+    // Reassemble file
+    return Buffer.concat(chunks);
+  }
+  
+  private async uploadChunk(uploadId: string, chunkIndex: number, chunk: Buffer): Promise<string> {
+    const result = await this.storage.uploadBuffer(chunk, {
+      filename: `chunk:${uploadId}:${chunkIndex}`,
+      tags: ['chunk', uploadId],
+      metadata: {
+        uploadId,
+        chunkIndex,
+        chunkSize: chunk.length
+      }
+    });
+    
+    return result.hash;
+  }
+  
+  private generateUploadId(): string {
+    return `upload_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  }
+}
+
+// Usage
+const chunkedUploader = new ChunkedUploader(storage);
+
+// Upload large file
+const largeFile = Buffer.alloc(10 * 1024 * 1024); // 10MB file
+const manifestHash = await chunkedUploader.uploadLargeFile(largeFile);
+
+// Download large file
+const downloadedFile = await chunkedUploader.downloadLargeFile(manifestHash);
+```
+
+## Security and Access Control
+
+### Encrypted Storage
+
+```typescript
+class EncryptedStorage {
+  constructor(
+    private storage: ZGStorageClient,
+    private encryptionKey: string
+  ) {}
+  
+  async uploadEncrypted(data: Buffer | string, options: any = {}): Promise<string> {
+    const buffer = Buffer.isBuffer(data) ? data : Buffer.from(data);
+    const encrypted = this.encrypt(buffer);
+    
+    return await this.storage.uploadBuffer(encrypted, {
+      ...options,
+      tags: ['encrypted', ...(options.tags || [])],
+      metadata: {
+        ...options.metadata,
+        encrypted: true,
+        algorithm: 'aes-256-gcm'
+      }
+    });
+  }
+  
+  async downloadDecrypted(hash: string): Promise<Buffer> {
+    const encrypted = await this.storage.download(hash);
+    return this.decrypt(encrypted);
+  }
+  
+  private encrypt(data: Buffer): Buffer {
+    const crypto = require('crypto');
+    const algorithm = 'aes-256-gcm';
+    const key = crypto.scryptSync(this.encryptionKey, 'salt', 32);
+    const iv = crypto.randomBytes(16);
+    
+    const cipher = crypto.createCipher(algorithm, key);
+    cipher.setAAD(Buffer.from('0g-storage'));
+    
+    const encrypted = Buffer.concat([
+      cipher.update(data),
+      cipher.final()
+    ]);
+    
+    const tag = cipher.getAuthTag();
+    
+    return Buffer.concat([iv, tag, encrypted]);
+  }
+  
+  private decrypt(encryptedData: Buffer): Buffer {
+    const crypto = require('crypto');
+    const algorithm = 'aes-256-gcm';
+    const key = crypto.scryptSync(this.encryptionKey, 'salt', 32);
+    
+    const iv = encryptedData.slice(0, 16);
+    const tag = encryptedData.slice(16, 32);
+    const encrypted = encryptedData.slice(32);
+    
+    const decipher = crypto.createDecipher(algorithm, key);
+    decipher.setAAD(Buffer.from('0g-storage'));
+    decipher.setAuthTag(tag);
+    
+    return Buffer.concat([
+      decipher.update(encrypted),
+      decipher.final()
+    ]);
+  }
+}
+
+// Usage
+const encryptedStorage = new EncryptedStorage(storage, 'your-encryption-key');
+
+const hash = await encryptedStorage.uploadEncrypted('Sensitive data');
+const decrypted = await encryptedStorage.downloadDecrypted(hash);
+```
+
+## Best Practices
+
+### Storage Organization
+
+1. **Use consistent naming**: Implement clear file naming conventions
+2. **Tag strategically**: Use tags for efficient searching and filtering
+3. **Include metadata**: Store searchable metadata with files
+4. **Version control**: Implement versioning for important files
+
+### Performance
+
+1. **Batch operations**: Group multiple operations together
+2. **Parallel uploads**: Upload multiple files concurrently
+3. **Chunk large files**: Use chunked uploads for large files
+4. **Cache frequently accessed data**: Implement local caching
+
+### Security
+
+1. **Encrypt sensitive data**: Use encryption for confidential information
+2. **Access controls**: Implement proper access controls
+3. **Key management**: Securely manage encryption keys
+4. **Audit trails**: Log access and modifications
+
+### Cost Optimization
+
+1. **Deduplication**: Avoid storing duplicate content
+2. **Compression**: Compress data before storage
+3. **Lifecycle management**: Implement data retention policies
+4. **Monitor usage**: Track storage costs and usage patterns
+
+## Related
+
+- [Memory Integration](/essentials/memory)
+- [Agent File Tools](/api-reference/agent/tools)
+- [ZGStorageClient API](/api-reference/storage/client)

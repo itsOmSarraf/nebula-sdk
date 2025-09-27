@@ -1,0 +1,513 @@
+# Agents
+
+AI Agents are autonomous systems that can reason, plan, and execute tasks using available tools and memory. The 0G AI SDK provides a powerful agent framework for building intelligent applications.
+
+## Overview
+
+Agents in the 0G AI SDK are designed to:
+
+- **Reason autonomously**: Make decisions based on context and goals
+- **Use tools**: Access external APIs, databases, and services
+- **Remember context**: Maintain persistent memory across interactions
+- **Execute iteratively**: Break down complex tasks into manageable steps
+- **Learn and adapt**: Improve performance over time
+
+## Core Concepts
+
+### Agent Architecture
+
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   User Input    │───▶│     Agent       │───▶│    Response     │
+└─────────────────┘    │                 │    └─────────────────┘
+                       │  ┌───────────┐  │
+                       │  │   Chat    │  │
+                       │  │   Model   │  │
+                       │  └───────────┘  │
+                       │  ┌───────────┐  │
+                       │  │  Memory   │  │
+                       │  │  System   │  │
+                       │  └───────────┘  │
+                       │  ┌───────────┐  │
+                       │  │   Tools   │  │
+                       │  │ Registry  │  │
+                       │  └───────────┘  │
+                       └─────────────────┘
+```
+
+### Execution Flow
+
+1. **Task Analysis**: Agent analyzes the user's request
+2. **Planning**: Determines what tools and steps are needed
+3. **Execution**: Iteratively executes tools and processes results
+4. **Memory Updates**: Stores relevant information for future use
+5. **Response Generation**: Provides a comprehensive response
+
+## Basic Agent Creation
+
+```typescript
+import { createAgent } from '@src/index';
+
+// Create a basic agent with 0G network integration
+const assistant = await createAgent({
+  name: 'Personal Assistant',
+  providerAddress: '0xf07240Efa67755B5311bc75784a061eDB47165Dd', // llama-3.3-70b-instruct
+  memoryBucket: 'assistant-memory',
+  privateKey: 'your-private-key',
+  temperature: 0.7,
+  maxTokens: 1000
+});
+
+// Set the agent's behavior
+assistant.setSystemPrompt(`You are a helpful personal assistant. You can:
+                          - Answer questions
+                          - Help with calculations  
+                          - Manage information
+                          - Remember user preferences
+                          
+                          Always be polite and explain your actions clearly.`);
+
+// Use the agent for conversations
+async function useAssistant() {
+  // Simple question
+  let response = await assistant.ask('What time is it?');
+  console.log(response);
+  
+  // Math calculation
+  response = await assistant.ask('What is 15 * 24?');
+  console.log(response);
+  
+  // Context-aware conversation
+  response = await assistant.chatWithContext('Remember that I prefer concise answers');
+  console.log(response);
+  
+  // Save the conversation
+  const conversationId = await assistant.saveConversation();
+  console.log('Conversation saved:', conversationId);
+}
+
+useAssistant();
+```
+
+## Specialized Agents
+
+### Research Agent
+
+```typescript
+import { createAgent } from '@src/index';
+
+const researchAgent = await createAgent({
+  name: 'Research Assistant',
+  providerAddress: '0x3feE5a4dd5FDb8a32dDA97Bed899830605dBD9D3', // deepseek-r1-70b for reasoning
+  memoryBucket: 'research-memory',
+  privateKey: 'your-private-key',
+  temperature: 0.3, // Lower temperature for more focused research
+  maxTokens: 2000
+});
+
+researchAgent.setSystemPrompt(`You are a thorough research assistant. Your goals:
+                              - Find accurate, up-to-date information
+                              - Analyze and synthesize findings
+                              - Provide well-sourced conclusions
+                              - Store research for future reference`);
+
+// Usage example
+async function conductResearch(topic: string) {
+  // Store research topic
+  await researchAgent.remember('current_research_topic', topic);
+  
+  // Ask the agent to research
+  const response = await researchAgent.chatWithContext(
+    `Please research the topic: ${topic}. Provide a comprehensive analysis with key findings.`
+  );
+  
+  // Store the research results
+  await researchAgent.remember(`research_results:${topic}`, {
+    topic,
+    findings: response,
+    timestamp: new Date()
+  });
+  
+  return response;
+}
+
+// Example usage
+const findings = await conductResearch('Artificial Intelligence Trends 2024');
+console.log(findings);
+```
+
+### Code Assistant Agent
+
+```typescript
+import { createAgent } from '@src/index';
+const codeAgent = await createAgent({
+  name: 'Code Assistant',
+  providerAddress: '0x3feE5a4dd5FDb8a32dDA97Bed899830605dBD9D3', // deepseek-r1-70b for complex reasoning
+  memoryBucket: 'code-assistant-memory',
+  privateKey: 'your-private-key',
+  temperature: 0.2, // Low temperature for precise code
+  maxTokens: 3000
+});
+
+codeAgent.setSystemPrompt(`You are an expert software developer. You can:
+                          - Write and review code
+                          - Debug issues
+                          - Explain programming concepts
+                          - Suggest best practices
+                          - Help with architecture decisions`);
+
+// Usage examples
+async function codeAssistance() {
+  // Code review
+  const codeToReview = `
+    function calculateTotal(items) {
+      let total = 0;
+      for (let i = 0; i < items.length; i++) {
+        total += items[i].price;
+      }
+      return total;
+    }
+  `;
+  
+  const review = await codeAgent.chatWithContext(
+    `Please review this JavaScript code and suggest improvements:\n\n${codeToReview}`
+  );
+  console.log('Code Review:', review);
+  
+  // Store the code snippet for future reference
+  await codeAgent.remember('code_snippet:calculate_total', {
+    title: 'Calculate Total Function',
+    code: codeToReview,
+    language: 'javascript',
+    review: review,
+    timestamp: new Date()
+  });
+  
+  // Generate new code
+  const newCode = await codeAgent.chatWithContext(
+    'Generate a TypeScript function that validates email addresses using regex'
+  );
+  console.log('Generated Code:', newCode);
+}
+
+codeAssistance();
+```
+
+### Data Analysis Agent
+
+```typescript
+import { createAgent } from '@src/index';
+const dataAgent = await createAgent({
+  name: 'Data Analyst',
+  providerAddress: '0x3feE5a4dd5FDb8a32dDA97Bed899830605dBD9D3', // deepseek-r1-70b for analytical reasoning
+  memoryBucket: 'data-analysis-memory',
+  privateKey: 'your-private-key',
+  temperature: 0.1, // Very low temperature for precise analysis
+  maxTokens: 4000
+});
+
+dataAgent.setSystemPrompt(`You are a data analysis expert. You can:
+                          - Analyze datasets and identify patterns
+                          - Generate statistical insights
+                          - Create visualizations
+                          - Provide data-driven recommendations`);
+
+// Usage example
+async function analyzeData() {
+  const salesData = [
+    { month: 'Jan', sales: 1000, customers: 50 },
+    { month: 'Feb', sales: 1200, customers: 60 },
+    { month: 'Mar', sales: 1500, customers: 75 },
+    { month: 'Apr', sales: 1300, customers: 65 },
+    { month: 'May', sales: 1800, customers: 90 }
+  ];
+  
+  // Store the dataset
+  await dataAgent.remember('sales_data_q1', {
+    data: salesData,
+    description: 'Q1 Sales Performance Data',
+    timestamp: new Date()
+  });
+  
+  // Analyze the data
+  const analysis = await dataAgent.chatWithContext(
+    `Please analyze this sales data and provide insights:
+     ${JSON.stringify(salesData, null, 2)}
+     
+     Focus on trends, patterns, and recommendations for improvement.`
+  );
+  
+  console.log('Data Analysis:', analysis);
+  
+  // Ask for visualization recommendations
+  const vizRecommendation = await dataAgent.chatWithContext(
+    'What type of visualization would be best for this sales data? Provide specific chart recommendations.'
+  );
+  
+  console.log('Visualization Recommendations:', vizRecommendation);
+  
+  return { analysis, vizRecommendation };
+}
+
+analyzeData();
+```
+
+## Agent Collaboration
+
+### Multi-Agent Workflows
+
+```typescript
+import { createAgent } from '@src/index';
+
+// Create multiple specialized agents for collaborative work
+async function createCollaborativeAgents() {
+  const researchAgent = await createAgent({
+    name: 'Research Specialist',
+    providerAddress: '0x3feE5a4dd5FDb8a32dDA97Bed899830605dBD9D3', // deepseek-r1-70b for reasoning
+    memoryBucket: 'research-collab',
+    privateKey: 'your-private-key',
+    temperature: 0.3
+  });
+  
+  const analysisAgent = await createAgent({
+    name: 'Analysis Specialist',
+    providerAddress: '0x3feE5a4dd5FDb8a32dDA97Bed899830605dBD9D3',
+    memoryBucket: 'analysis-collab',
+    privateKey: 'your-private-key',
+    temperature: 0.1
+  });
+  
+  const reportAgent = await createAgent({
+    name: 'Report Writer',
+    providerAddress: '0xf07240Efa67755B5311bc75784a061eDB47165Dd', // llama-3.3-70b for writing
+    memoryBucket: 'report-collab',
+    privateKey: 'your-private-key',
+    temperature: 0.7
+  });
+  
+  return { researchAgent, analysisAgent, reportAgent };
+}
+
+async function executeCollaborativeProject(topic: string) {
+  const { researchAgent, analysisAgent, reportAgent } = await createCollaborativeAgents();
+  
+  console.log(`Starting collaborative project on: ${topic}`);
+  
+  // Phase 1: Research
+  researchAgent.setSystemPrompt('You are a thorough researcher. Gather comprehensive information.');
+  const researchFindings = await researchAgent.chatWithContext(
+    `Research the topic "${topic}" and provide detailed findings with key insights.`
+  );
+  
+  // Store research for other agents to access
+  await researchAgent.remember(`project:${topic}:research`, {
+    topic,
+    findings: researchFindings,
+    phase: 'research',
+    timestamp: new Date()
+  });
+  
+  // Phase 2: Analysis
+  analysisAgent.setSystemPrompt('You are an analytical expert. Identify patterns and insights.');
+  const analysis = await analysisAgent.chatWithContext(
+    `Analyze these research findings and identify key patterns, trends, and insights:
+     
+     ${researchFindings}`
+  );
+  
+  // Store analysis
+  await analysisAgent.remember(`project:${topic}:analysis`, {
+    topic,
+    analysis,
+    phase: 'analysis',
+    timestamp: new Date()
+  });
+  
+  // Phase 3: Report Generation
+  reportAgent.setSystemPrompt('You are a skilled report writer. Create comprehensive, well-structured reports.');
+  const finalReport = await reportAgent.chatWithContext(
+    `Create a comprehensive report on "${topic}" using this research and analysis:
+     
+     RESEARCH FINDINGS:
+     ${researchFindings}
+     
+     ANALYSIS:
+     ${analysis}
+     
+     Structure the report with executive summary, key findings, analysis, and recommendations.`
+  );
+  
+  // Store final report
+  await reportAgent.remember(`project:${topic}:final_report`, {
+    topic,
+    report: finalReport,
+    phase: 'final_report',
+    timestamp: new Date()
+  });
+  
+  return {
+    topic,
+    research: researchFindings,
+    analysis,
+    report: finalReport
+  };
+}
+
+// Usage
+const project = await executeCollaborativeProject('Artificial Intelligence Trends 2024');
+console.log('Project completed:', project.topic);
+```
+
+### Agent Communication
+
+```typescript
+// Enable agents to communicate with each other
+class AgentCommunicationHub {
+  private agents = new Map<string, Agent>();
+  private messageQueue = new Map<string, any[]>();
+  
+  registerAgent(name: string, agent: Agent) {
+    this.agents.set(name, agent);
+    this.messageQueue.set(name, []);
+  }
+  
+  async sendMessage(fromAgent: string, toAgent: string, message: any) {
+    if (!this.messageQueue.has(toAgent)) {
+      throw new Error(`Agent ${toAgent} not found`);
+    }
+    
+    this.messageQueue.get(toAgent)!.push({
+      from: fromAgent,
+      message,
+      timestamp: new Date()
+    });
+  }
+  
+  getMessages(agentName: string) {
+    return this.messageQueue.get(agentName) || [];
+  }
+  
+  clearMessages(agentName: string) {
+    this.messageQueue.set(agentName, []);
+  }
+}
+
+// Create communication tool for agents
+function createCommunicationTool(hub: AgentCommunicationHub, agentName: string) {
+  return {
+    name: 'sendMessage',
+    description: 'Send a message to another agent',
+    parameters: {
+      type: 'object',
+      properties: {
+        recipient: { type: 'string', description: 'Name of the recipient agent' },
+        message: { type: 'string', description: 'Message to send' }
+      },
+      required: ['recipient', 'message']
+    },
+    execute: async ({ recipient, message }) => {
+      await hub.sendMessage(agentName, recipient, message);
+      return `Message sent to ${recipient}`;
+    }
+  };
+}
+```
+
+## Agent Monitoring and Analytics
+
+### Performance Tracking
+
+```typescript
+class AgentMonitor {
+  constructor(private memory: Memory) {}
+  
+  async trackExecution(agentName: string, result: any) {
+    await this.memory.store({
+      key: `agent_execution:${agentName}:${Date.now()}`,
+      value: {
+        agentName,
+        success: result.success,
+        executionTime: result.executionTime,
+        iterations: result.iterations,
+        toolCalls: result.toolCalls.length,
+        timestamp: new Date()
+      },
+      tags: ['monitoring', 'execution', agentName]
+    });
+  }
+  
+  async getPerformanceMetrics(agentName: string, timeRange: number = 24 * 60 * 60 * 1000) {
+    const since = new Date(Date.now() - timeRange);
+    
+    const executions = await this.memory.search({
+      tags: ['monitoring', 'execution', agentName],
+      dateRange: { from: since, to: new Date() },
+      limit: 1000
+    });
+    
+    const metrics = executions.results.map(r => r.value);
+    
+    return {
+      totalExecutions: metrics.length,
+      successRate: metrics.filter(m => m.success).length / metrics.length,
+      averageExecutionTime: metrics.reduce((sum, m) => sum + m.executionTime, 0) / metrics.length,
+      averageIterations: metrics.reduce((sum, m) => sum + m.iterations, 0) / metrics.length,
+      averageToolCalls: metrics.reduce((sum, m) => sum + m.toolCalls, 0) / metrics.length
+    };
+  }
+}
+
+// Usage with agents
+const monitor = new AgentMonitor(memory);
+
+// Wrap agent execution with monitoring
+async function monitoredExecution(agent: Agent, task: any) {
+  const result = await agent.execute(task);
+  await monitor.trackExecution(agent.name, result);
+  return result;
+}
+```
+
+## Best Practices
+
+### Agent Design
+
+1. **Single Purpose**: Design agents with specific, well-defined roles
+2. **Clear Instructions**: Provide detailed system prompts and descriptions
+3. **Appropriate Tools**: Only include tools relevant to the agent's purpose
+4. **Reasonable Limits**: Set appropriate iteration and timeout limits
+
+### Tool Integration
+
+1. **Error Handling**: Implement robust error handling in tools
+2. **Input Validation**: Validate all tool parameters
+3. **Resource Management**: Manage external resources properly
+4. **Security**: Implement proper security measures for sensitive operations
+
+### Memory Management
+
+1. **Structured Storage**: Use consistent key patterns and tagging
+2. **Context Relevance**: Store only relevant information
+3. **Cleanup**: Implement cleanup for temporary data
+4. **Privacy**: Handle sensitive information appropriately
+
+### Performance Optimization
+
+1. **Efficient Tools**: Optimize tool execution time
+2. **Parallel Processing**: Use parallel execution where possible
+3. **Caching**: Cache frequently accessed data
+4. **Monitoring**: Track and optimize performance metrics
+
+## Examples
+
+Check out these complete examples:
+
+- [Basic Agent Usage](https://github.com/0glabs/0g-ai-sdk/blob/main/examples/basic-usage.ts)
+- [Multi-Agent Workflow](https://github.com/0glabs/0g-ai-sdk/blob/main/examples/advanced-memory.ts)
+- [Custom Tool Development](https://github.com/0glabs/0g-ai-sdk/blob/main/examples/streaming-chat.ts)
+
+## Related
+
+- [Agent API Reference](/api-reference/agent/create)
+- [Tool Development](/api-reference/agent/tools)
+- [Memory Integration](/essentials/memory)

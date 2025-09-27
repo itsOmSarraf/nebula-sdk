@@ -1,0 +1,162 @@
+# Quickstart
+
+Get started with the 0G AI SDK in just a few minutes.
+
+## Installation
+
+<CodeGroup>
+
+```bash npm
+npm install 0g-ai-sdk
+```
+
+```bash yarn
+yarn add 0g-ai-sdk
+```
+
+```bash pnpm
+pnpm add 0g-ai-sdk
+```
+
+</CodeGroup>
+
+## Basic Setup
+
+First, import and initialize the SDK:
+
+```typescript
+import { createAgent } from '@src/index';
+
+// Create a pre-configured agent with 0G network
+const agent = await createAgent({
+  name: 'My Assistant',
+  providerAddress: '0xf07240Efa67755B5311bc75784a061eDB47165Dd', // llama-3.3-70b-instruct
+  memoryBucket: 'my-agent-memory',
+  privateKey: 'your-private-key'
+});
+```
+
+## Your First Chat
+
+Create a simple chat interaction:
+
+```typescript
+async function basicChat() {
+  // Set system prompt for the agent
+  agent.setSystemPrompt('You are a helpful AI assistant.');
+  
+  const response = await agent.ask('Hello, how can you help me today?');
+  console.log(response);
+}
+
+basicChat();
+```
+
+## Streaming Chat
+
+For real-time responses, use streaming:
+
+```typescript
+async function streamingChat() {
+  agent.setSystemPrompt('You are a creative storyteller.');
+  
+  const response = await agent.streamChat(
+    'Tell me a story about AI',
+    (chunk) => {
+      process.stdout.write(chunk);
+    }
+  );
+  
+  console.log('\nComplete story:', response);
+}
+
+streamingChat();
+```
+
+## Adding Memory
+
+Enhance your chat with persistent memory:
+
+```typescript
+async function chatWithMemory() {
+  // Store user preferences in persistent memory
+  await agent.remember('user_preferences', {
+    language: 'English',
+    tone: 'friendly'
+  });
+  
+  // The agent automatically uses memory context in conversations
+  const response = await agent.chatWithContext(
+    'Remember my preferences and help me with a coding question'
+  );
+  
+  console.log(response);
+}
+
+chatWithMemory();
+```
+
+## Creating an Agent
+
+Build an autonomous agent with tools:
+
+```typescript
+// Agents in 0G AI SDK are conversation-based with persistent memory
+async function runAgent() {
+  // Set up the agent's behavior
+  agent.setSystemPrompt(`You are a helpful assistant. When users ask for the time, 
+                         tell them the current time is ${new Date().toISOString()}`);
+  
+  const response = await agent.chatWithContext('What time is it?');
+  console.log(response);
+  
+  // Save the conversation for future reference
+  const conversationId = await agent.saveConversation();
+  console.log('Conversation saved with ID:', conversationId);
+}
+
+runAgent();
+```
+
+## Next Steps
+
+Now that you have the basics down, explore more advanced features:
+
+<CardGroup cols={2}>
+  <Card
+    title="Chat API"
+    icon="comments"
+    href="/essentials/chat"
+  >
+    Learn about advanced chat features and configuration
+  </Card>
+  <Card
+    title="Memory System"
+    icon="brain"
+    href="/essentials/memory"
+  >
+    Dive deep into memory storage and retrieval
+  </Card>
+  <Card
+    title="Agent Framework"
+    icon="robot"
+    href="/essentials/agents"
+  >
+    Build sophisticated AI agents with custom tools
+  </Card>
+  <Card
+    title="Storage Integration"
+    icon="database"
+    href="/essentials/storage"
+  >
+    Use decentralized storage for your data
+  </Card>
+</CardGroup>
+
+## Examples
+
+Check out complete examples in our [GitHub repository](https://github.com/0glabs/0g-ai-sdk/tree/main/examples):
+
+- [Basic Usage](https://github.com/0glabs/0g-ai-sdk/blob/main/examples/basic-usage.ts)
+- [Streaming Chat](https://github.com/0glabs/0g-ai-sdk/blob/main/examples/streaming-chat.ts)
+- [Advanced Memory](https://github.com/0glabs/0g-ai-sdk/blob/main/examples/advanced-memory.ts)

@@ -1,0 +1,179 @@
+# API Reference
+
+Welcome to the 0G AI SDK API Reference. This section provides detailed documentation for all classes, methods, and types available in the SDK.
+
+## Overview
+
+The 0G AI SDK is organized into several main modules:
+
+<CardGroup cols={2}>
+  <Card
+    title="Chat"
+    icon="comments"
+    href="/api-reference/chat/create"
+  >
+    Conversational AI with streaming support
+  </Card>
+  <Card
+    title="Memory"
+    icon="brain"
+    href="/api-reference/memory/store"
+  >
+    Persistent storage for AI context and data
+  </Card>
+  <Card
+    title="Agent"
+    icon="robot"
+    href="/api-reference/agent/create"
+  >
+    Autonomous AI agents with tool integration
+  </Card>
+  <Card
+    title="Storage"
+    icon="database"
+    href="/essentials/storage"
+  >
+    Decentralized storage on the 0G network
+  </Card>
+</CardGroup>
+
+## Quick Reference
+
+### Core Classes
+
+| Class | Description | Import |
+|-------|-------------|---------|
+| `Chat` | Main chat interface | `import { Chat } from '0g-ai-sdk'` |
+| `Memory` | Memory management | `import { Memory } from '0g-ai-sdk'` |
+| `Agent` | AI agent framework | `import { Agent } from '0g-ai-sdk'` |
+| `ZGStorageClient` | Storage client | `import { ZGStorageClient } from '0g-ai-sdk'` |
+| `ZGComputeBroker` | Compute broker | `import { ZGComputeBroker } from '0g-ai-sdk'` |
+
+### Common Types
+
+```typescript
+// Chat message structure
+interface ChatMessage {
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  timestamp?: Date;
+}
+
+// Chat response
+interface ChatResponse {
+  content: string;
+  usage: {
+    promptTokens: number;
+    completionTokens: number;
+    totalTokens: number;
+  };
+  model: string;
+  finishReason: 'stop' | 'length' | 'content_filter';
+}
+
+// Memory entry
+interface MemoryEntry {
+  key: string;
+  value: any;
+  timestamp: Date;
+  metadata?: Record<string, any>;
+}
+
+// Agent tool definition
+interface AgentTool {
+  name: string;
+  description: string;
+  parameters?: Record<string, any>;
+  execute: (params: any) => Promise<any> | any;
+}
+```
+
+## Authentication
+
+All API calls require authentication. Set your API key when initializing SDK components:
+
+```typescript
+import { Chat, Memory, Agent } from '0g-ai-sdk';
+
+// Option 1: Pass API key directly
+const chat = new Chat({
+  apiKey: 'your-api-key-here'
+});
+
+// Option 2: Use environment variable
+process.env.ZG_API_KEY = 'your-api-key-here';
+const memory = new Memory(); // Will use ZG_API_KEY automatically
+```
+
+## Error Handling
+
+The SDK uses structured error objects for consistent error handling:
+
+```typescript
+interface SDKError extends Error {
+  code: string;
+  statusCode?: number;
+  details?: any;
+}
+
+// Common error codes
+const ERROR_CODES = {
+  INVALID_API_KEY: 'INVALID_API_KEY',
+  RATE_LIMIT: 'RATE_LIMIT',
+  NETWORK_ERROR: 'NETWORK_ERROR',
+  INVALID_INPUT: 'INVALID_INPUT',
+  STORAGE_ERROR: 'STORAGE_ERROR'
+};
+```
+
+## Rate Limits
+
+The SDK respects the following rate limits:
+
+| Endpoint | Limit | Window |
+|----------|-------|---------|
+| Chat API | 100 requests | per minute |
+| Memory API | 1000 requests | per minute |
+| Storage API | 50 requests | per minute |
+| Agent API | 20 requests | per minute |
+
+## Pagination
+
+For endpoints that return large datasets, use pagination:
+
+```typescript
+// Memory search with pagination
+const results = await memory.search({
+  query: 'important data',
+  limit: 50,
+  offset: 0
+});
+
+// Check if more results available
+if (results.hasMore) {
+  const nextPage = await memory.search({
+    query: 'important data',
+    limit: 50,
+    offset: 50
+  });
+}
+```
+
+## Versioning
+
+The SDK follows semantic versioning. Always specify the version in your package.json:
+
+```json
+{
+  "dependencies": {
+    "0g-ai-sdk": "^1.0.0"
+  }
+}
+```
+
+## Support
+
+- **Documentation**: [https://docs.0g.ai](https://docs.0g.ai)
+- **GitHub Issues**: [https://github.com/0glabs/0g-ai-sdk/issues](https://github.com/0glabs/0g-ai-sdk/issues)
+- **Discord**: [https://discord.gg/0g](https://discord.gg/0g)
+- **Email**: support@0g.ai

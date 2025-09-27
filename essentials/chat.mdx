@@ -1,0 +1,179 @@
+# Chat
+
+The Chat module provides powerful conversational AI capabilities with support for streaming responses and context management.
+
+## Overview
+
+The Chat class is the core interface for creating conversational experiences. It supports both single-shot and streaming responses, with built-in context management and customizable system prompts.
+
+## Basic Usage
+
+```typescript
+import { Chat } from '0g-ai-sdk';
+
+const chat = new Chat({
+  apiKey: 'your-api-key',
+  model: 'llama-3.3-70b-instruct',
+  maxTokens: 1000
+});
+
+// Simple chat
+const response = await chat.send({
+  message: 'Hello, world!',
+  systemPrompt: 'You are a helpful assistant.'
+});
+
+console.log(response.content);
+```
+
+## Configuration Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `apiKey` | string | required | Your API key for the AI service |
+| `model` | string | 'gpt-3.5-turbo' | The AI model to use |
+| `maxTokens` | number | 1000 | Maximum tokens in response |
+| `temperature` | number | 0.7 | Response creativity (0-1) |
+| `timeout` | number | 30000 | Request timeout in milliseconds |
+
+## Streaming Responses
+
+For real-time interactions, use the streaming API:
+
+```typescript
+async function streamChat() {
+  const stream = await chat.stream({
+    message: 'Tell me a long story',
+    systemPrompt: 'You are a storyteller.'
+  });
+  
+  for await (const chunk of stream) {
+    process.stdout.write(chunk.content);
+  }
+}
+```
+
+## Context Management
+
+Maintain conversation context across multiple messages:
+
+```typescript
+const conversation = [];
+
+async function continueConversation(message: string) {
+  const response = await chat.send({
+    message,
+    context: conversation,
+    systemPrompt: 'Remember our previous conversation.'
+  });
+  
+  // Add to conversation history
+  conversation.push(
+    { role: 'user', content: message },
+    { role: 'assistant', content: response.content }
+  );
+  
+  return response;
+}
+```
+
+## Advanced Features
+
+### Custom System Prompts
+
+```typescript
+const response = await chat.send({
+  message: 'Explain quantum computing',
+  systemPrompt: `You are a physics professor. Explain concepts clearly 
+                 with examples and avoid jargon. Use analogies when helpful.`
+});
+```
+
+### Response Formatting
+
+```typescript
+const response = await chat.send({
+  message: 'List the planets',
+  systemPrompt: 'Respond in JSON format',
+  responseFormat: 'json'
+});
+```
+
+### Error Handling
+
+```typescript
+try {
+  const response = await chat.send({
+    message: 'Hello',
+    systemPrompt: 'Be helpful'
+  });
+} catch (error) {
+  if (error.code === 'RATE_LIMIT') {
+    console.log('Rate limit exceeded, please wait');
+  } else if (error.code === 'INVALID_API_KEY') {
+    console.log('Please check your API key');
+  } else {
+    console.log('Unexpected error:', error.message);
+  }
+}
+```
+
+## Integration with Memory
+
+Combine Chat with Memory for persistent conversations:
+
+```typescript
+import { Chat, Memory } from '0g-ai-sdk';
+
+const chat = new Chat({ apiKey: 'your-key' });
+const memory = new Memory({ storageKey: 'chat-session' });
+
+async function chatWithMemory(message: string) {
+  // Retrieve conversation history
+  const history = await memory.retrieve('conversation') || [];
+  
+  const response = await chat.send({
+    message,
+    context: history,
+    systemPrompt: 'Continue our conversation naturally.'
+  });
+  
+  // Store updated history
+  history.push(
+    { role: 'user', content: message },
+    { role: 'assistant', content: response.content }
+  );
+  
+  await memory.store({
+    key: 'conversation',
+    value: history
+  });
+  
+  return response;
+}
+```
+
+## Best Practices
+
+### Performance
+- Use streaming for long responses to improve perceived performance
+- Implement proper timeout handling for network requests
+- Cache frequently used system prompts
+
+### Security
+- Never expose API keys in client-side code
+- Validate and sanitize user inputs
+- Implement rate limiting to prevent abuse
+
+### User Experience
+- Provide loading indicators during API calls
+- Handle errors gracefully with user-friendly messages
+- Allow users to cancel long-running requests
+
+## Examples
+
+Check out these complete examples:
+
+- [Basic Chat](https://github.com/0glabs/0g-ai-sdk/blob/main/examples/basic-usage.ts)
+- [Streaming Chat](https://github.com/0glabs/0g-ai-sdk/blob/main/examples/streaming-chat.ts)
+- [Chat with Memory](https://github.com/0glabs/0g-ai-sdk/blob/main/examples/advanced-memory.ts)

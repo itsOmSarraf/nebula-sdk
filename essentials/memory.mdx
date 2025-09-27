@@ -1,0 +1,424 @@
+# Memory
+
+The Memory module provides persistent storage capabilities for AI applications, enabling agents and chat systems to remember context, user preferences, and important information across sessions.
+
+## Overview
+
+The Memory system is built on the 0G decentralized storage network, providing:
+
+- **Persistent Storage**: Data survives application restarts and deployments
+- **Decentralized**: No single point of failure
+- **Searchable**: Full-text search and tag-based filtering
+- **Scalable**: Handles large amounts of data efficiently
+- **Secure**: Encrypted storage with access controls
+
+## Basic Usage
+
+```typescript
+import { createAgent } from '@src/index';
+
+const agent = await createAgent({
+  name: 'Memory Agent',
+  providerAddress: '0xf07240Efa67755B5311bc75784a061eDB47165Dd',
+  memoryBucket: 'my-app-memory',
+  privateKey: 'your-private-key'
+});
+
+// Store data in persistent memory
+await agent.remember('user_preferences', {
+  theme: 'dark',
+  language: 'en',
+  notifications: true
+});
+
+// Retrieve data
+const preferences = await agent.recall('user_preferences');
+console.log(preferences);
+
+// Memory is automatically integrated with conversations
+const response = await agent.chatWithContext('What are my current preferences?');
+```
+
+## Configuration Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `storageKey` | string | required | Unique identifier for your memory space |
+| `apiKey` | string | required | Your API key for authentication |
+| `encryption` | boolean | true | Whether to encrypt stored data |
+| `compression` | boolean | true | Whether to compress data before storage |
+| `ttl` | number | null | Default time-to-live for entries (seconds) |
+
+## Memory Patterns
+
+### User Context Storage
+
+```typescript
+// Store user context for personalized experiences
+async function storeUserContext(agent: any, userId: string, context: any) {
+  await agent.remember(`user_context:${userId}`, {
+    preferences: context.preferences,
+    history: context.history,
+    profile: context.profile,
+    lastActive: new Date(),
+    userId,
+    version: 1
+  });
+}
+
+async function getUserContext(agent: any, userId: string) {
+  const context = await agent.recall(`user_context:${userId}`);
+  return context || null;
+}
+```
+
+### Conversation Memory
+
+```typescript
+// Conversation memory is built into agents automatically
+import { createAgent } from '@src/index';
+
+async function createConversationalAgent(sessionId: string) {
+  const agent = await createAgent({
+    name: 'Conversational Agent',
+    providerAddress: '0xf07240Efa67755B5311bc75784a061eDB47165Dd',
+    memoryBucket: `conversation-${sessionId}`,
+    privateKey: 'your-private-key',
+    maxEphemeralMessages: 50 // Keep last 50 messages in memory
+  });
+  
+  return agent;
+}
+
+// Usage
+const agent = await createConversationalAgent('session-123');
+
+// Conversations are automatically stored and retrieved
+await agent.chatWithContext('Hello, I need help with coding');
+await agent.chatWithContext('Can you help me with TypeScript?');
+
+// Save conversation for later
+const conversationId = await agent.saveConversation();
+
+// Load previous conversation
+await agent.loadConversation(conversationId);
+
+// Continue where you left off
+await agent.chatWithContext('What were we discussing?');
+```
+
+### Knowledge Base
+
+```typescript
+// Create a searchable knowledge base
+class KnowledgeBase {
+  constructor(private memory: Memory) {}
+  
+  async addKnowledge(topic: string, content: string, source?: string) {
+    const knowledgeId = `knowledge_${Date.now()}`;
+    
+    await this.memory.store({
+      key: knowledgeId,
+      value: {
+        topic,
+        content,
+        source,
+        createdAt: new Date()
+      },
+      tags: ['knowledge', topic.toLowerCase()],
+      metadata: {
+        topic,
+        source,
+        wordCount: content.split(' ').length
+      }
+    });
+  }
+  
+  async searchKnowledge(query: string) {
+    return await this.memory.search({
+      text: query,
+      tags: ['knowledge'],
+      sortBy: 'relevance',
+      limit: 10
+    });
+  }
+  
+  async getKnowledgeByTopic(topic: string) {
+    return await this.memory.search({
+      tags: ['knowledge', topic.toLowerCase()],
+      sortBy: 'timestamp',
+      limit: 20
+    });
+  }
+}
+```
+
+## Integration with Chat
+
+### Context-Aware Conversations
+
+```typescript
+import { Chat, Memory } from '0g-ai-sdk';
+
+class ContextualChat {
+  private chat: Chat;
+  private memory: Memory;
+  private sessionId: string;
+  
+  constructor(apiKey: string, sessionId: string) {
+    this.chat = new Chat({ apiKey });
+    this.memory = new Memory({ 
+      storageKey: `chat_memory_${sessionId}`,
+      apiKey 
+    });
+    this.sessionId = sessionId;
+  }
+  
+  async sendMessage(message: string) {
+    // Retrieve relevant context
+    const context = await this.getRelevantContext(message);
+    
+    // Send message with context
+    const response = await this.chat.send({
+      message,
+      context: context.messages,
+      systemPrompt: `You are a helpful assistant. Use the following context to provide relevant responses:
+                     User preferences: ${JSON.stringify(context.preferences)}
+                     Previous topics: ${context.topics.join(', ')}`
+    });
+    
+    // Store the conversation
+    await this.storeConversation(message, response.content);
+    
+    return response;
+  }
+  
+  private async getRelevantContext(message: string) {
+    // Get user preferences
+    const preferences = await this.memory.retrieve(`preferences:${this.sessionId}`);
+    
+    // Get recent conversation history
+    const recentMessages = await this.memory.search({
+      tags: ['conversation', this.sessionId],
+      sortBy: 'timestamp',
+      sortOrder: 'desc',
+      limit: 10
+    });
+    
+    // Get relevant knowledge
+    const relevantKnowledge = await this.memory.search({
+      text: message,
+      tags: ['knowledge'],
+      limit: 5
+    });
+    
+    return {
+      preferences: preferences?.value || {},
+      messages: recentMessages.results.map(r => r.value),
+      topics: relevantKnowledge.results.map(r => r.value.topic),
+      knowledge: relevantKnowledge.results.map(r => r.value.content)
+    };
+  }
+  
+  private async storeConversation(userMessage: string, assistantResponse: string) {
+    const timestamp = new Date();
+    
+    // Store user message
+    await this.memory.store({
+      key: `msg_user_${timestamp.getTime()}`,
+      value: {
+        role: 'user',
+        content: userMessage,
+        timestamp
+      },
+      tags: ['conversation', this.sessionId, 'user']
+    });
+    
+    // Store assistant response
+    await this.memory.store({
+      key: `msg_assistant_${timestamp.getTime() + 1}`,
+      value: {
+        role: 'assistant',
+        content: assistantResponse,
+        timestamp: new Date(timestamp.getTime() + 1)
+      },
+      tags: ['conversation', this.sessionId, 'assistant']
+    });
+  }
+}
+```
+
+## Advanced Features
+
+### Memory Hierarchies
+
+```typescript
+// Create hierarchical memory structures
+class HierarchicalMemory {
+  constructor(private memory: Memory) {}
+  
+  async storeHierarchical(path: string[], data: any) {
+    const fullKey = path.join(':');
+    
+    await this.memory.store({
+      key: fullKey,
+      value: data,
+      tags: ['hierarchical', ...path],
+      metadata: {
+        path,
+        level: path.length,
+        parent: path.slice(0, -1).join(':') || null
+      }
+    });
+  }
+  
+  async getChildren(parentPath: string[]) {
+    const parentKey = parentPath.join(':');
+    
+    return await this.memory.search({
+      metadata: { parent: parentKey },
+      tags: ['hierarchical']
+    });
+  }
+  
+  async getPath(path: string[]) {
+    const results = [];
+    
+    for (let i = 1; i <= path.length; i++) {
+      const currentPath = path.slice(0, i);
+      const key = currentPath.join(':');
+      const entry = await this.memory.retrieve(key);
+      
+      if (entry) {
+        results.push({
+          path: currentPath,
+          data: entry.value
+        });
+      }
+    }
+    
+    return results;
+  }
+}
+
+// Usage
+const hierarchical = new HierarchicalMemory(memory);
+
+await hierarchical.storeHierarchical(['users', 'john', 'preferences'], {
+  theme: 'dark',
+  language: 'en'
+});
+
+await hierarchical.storeHierarchical(['users', 'john', 'profile'], {
+  name: 'John Doe',
+  email: 'john@example.com'
+});
+
+const johnData = await hierarchical.getChildren(['users', 'john']);
+```
+
+### Memory Analytics
+
+```typescript
+// Analyze memory usage and patterns
+class MemoryAnalytics {
+  constructor(private memory: Memory) {}
+  
+  async getUsageStats() {
+    const allEntries = await this.memory.search({ limit: 10000 });
+    
+    const stats = {
+      totalEntries: allEntries.total,
+      totalSize: 0,
+      tagDistribution: {},
+      timeDistribution: {},
+      averageSize: 0
+    };
+    
+    allEntries.results.forEach(entry => {
+      // Calculate size
+      const size = JSON.stringify(entry.value).length;
+      stats.totalSize += size;
+      
+      // Tag distribution
+      entry.tags?.forEach(tag => {
+        stats.tagDistribution[tag] = (stats.tagDistribution[tag] || 0) + 1;
+      });
+      
+      // Time distribution
+      const date = new Date(entry.timestamp);
+      const monthKey = `${date.getFullYear()}-${date.getMonth() + 1}`;
+      stats.timeDistribution[monthKey] = (stats.timeDistribution[monthKey] || 0) + 1;
+    });
+    
+    stats.averageSize = stats.totalSize / stats.totalEntries;
+    
+    return stats;
+  }
+  
+  async findDuplicates() {
+    const allEntries = await this.memory.search({ limit: 10000 });
+    const contentHashes = new Map();
+    const duplicates = [];
+    
+    allEntries.results.forEach(entry => {
+      const contentHash = this.hashContent(entry.value);
+      
+      if (contentHashes.has(contentHash)) {
+        duplicates.push({
+          original: contentHashes.get(contentHash),
+          duplicate: entry
+        });
+      } else {
+        contentHashes.set(contentHash, entry);
+      }
+    });
+    
+    return duplicates;
+  }
+  
+  private hashContent(content: any): string {
+    return require('crypto')
+      .createHash('md5')
+      .update(JSON.stringify(content))
+      .digest('hex');
+  }
+}
+```
+
+## Best Practices
+
+### Data Organization
+
+1. **Use consistent key patterns**: `type:id:subtype`
+2. **Tag strategically**: Use tags for filtering and categorization
+3. **Include metadata**: Store searchable metadata for better queries
+4. **Set appropriate TTL**: Use time-to-live for temporary data
+
+### Performance Optimization
+
+1. **Batch operations**: Group related operations together
+2. **Use pagination**: Limit search results and paginate large datasets
+3. **Cache frequently accessed data**: Store commonly used data in local cache
+4. **Monitor storage usage**: Track and optimize storage consumption
+
+### Security Considerations
+
+1. **Encrypt sensitive data**: Use encryption for personal or sensitive information
+2. **Validate inputs**: Always validate data before storing
+3. **Access controls**: Implement proper access controls for shared memory spaces
+4. **Audit trails**: Log access and modifications for security monitoring
+
+## Examples
+
+Check out these complete examples:
+
+- [Basic Memory Usage](https://github.com/0glabs/0g-ai-sdk/blob/main/examples/basic-usage.ts)
+- [Advanced Memory Patterns](https://github.com/0glabs/0g-ai-sdk/blob/main/examples/advanced-memory.ts)
+- [Chat with Memory Integration](https://github.com/0glabs/0g-ai-sdk/blob/main/examples/streaming-chat.ts)
+
+## Related
+
+- [Memory API Reference](/api-reference/memory/store)
+- [Chat Integration](/essentials/chat)
+- [Agent Memory](/essentials/agents)

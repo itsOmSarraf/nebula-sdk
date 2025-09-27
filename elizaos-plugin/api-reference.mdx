@@ -1,0 +1,241 @@
+---
+title: "API Reference"
+description: "Complete API reference for the ElizaOS 0G plugin"
+---
+
+# API Reference
+
+## Actions
+
+### ZG_UPLOAD
+
+Uploads files to the 0G network with automatic handling of file processing and network communication.
+
+#### Aliases
+
+The `ZG_UPLOAD` action can be triggered using any of these aliases:
+
+- `UPLOAD_FILE_TO_ZG`
+- `STORE_FILE_ON_ZG`
+- `SAVE_FILE_TO_ZG`
+- `UPLOAD_TO_ZERO_GRAVITY`
+- `STORE_ON_ZERO_GRAVITY`
+- `SHARE_FILE_ON_ZG`
+- `PUBLISH_FILE_TO_ZG`
+
+#### Input Content
+
+```typescript
+interface UploadContent {
+  filePath: string;
+}
+```
+
+##### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `filePath` | `string` | Yes | Path to the file to upload (absolute or relative) |
+
+#### Response
+
+```typescript
+interface UploadResponse {
+  success: boolean;
+  fileHash?: string;
+  accessUrl?: string;
+  error?: string;
+  transactionHash?: string;
+}
+```
+
+##### Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `success` | `boolean` | Whether the upload was successful |
+| `fileHash` | `string` | IPFS hash of the uploaded file |
+| `accessUrl` | `string` | URL to access the file |
+| `error` | `string` | Error message if upload failed |
+| `transactionHash` | `string` | Blockchain transaction hash |
+
+#### Example Usage
+
+```javascript
+// Natural language trigger
+"Upload my document.pdf"
+
+// Programmatic usage
+const result = await zgUpload({
+  filePath: "./documents/report.pdf"
+});
+
+console.log(result);
+// {
+//   success: true,
+//   fileHash: "QmX1Y2Z3A4B5C6D7E8F9G0H1I2J3K4L5M6N7O8P9Q0R1S2T",
+//   accessUrl: "https://gateway.0g.ai/ipfs/QmX1Y2Z3...",
+//   transactionHash: "0xabc123..."
+// }
+```
+
+## Plugin Configuration
+
+### Plugin Registration
+
+```javascript
+import { zgPlugin } from "@elizaos/plugin-0g";
+
+const plugin = {
+  name: "0g-storage",
+  description: "Decentralized file storage using 0G protocol",
+  actions: [
+    // ZG_UPLOAD action and aliases
+  ],
+  evaluators: [],
+  providers: []
+};
+```
+
+### Environment Variables
+
+The plugin requires these environment variables:
+
+```typescript
+interface ZGConfig {
+  ZEROG_INDEXER_RPC: string;    // 0G indexer RPC endpoint
+  ZEROG_EVM_RPC: string;        // 0G EVM RPC endpoint  
+  ZEROG_PRIVATE_KEY: string;    // Private key for transactions
+  ZEROG_FLOW_ADDRESS: string;   // 0G Flow contract address
+}
+```
+
+## Error Codes
+
+### File Access Errors
+
+| Code | Description | Solution |
+|------|-------------|----------|
+| `FILE_NOT_FOUND` | File doesn't exist at specified path | Check file path and existence |
+| `PERMISSION_DENIED` | Insufficient file permissions | Verify read permissions |
+| `PATH_INVALID` | Invalid file path format | Use valid absolute or relative path |
+
+### Network Errors
+
+| Code | Description | Solution |
+|------|-------------|----------|
+| `RPC_CONNECTION_FAILED` | Cannot connect to 0G RPC | Check network and RPC endpoint |
+| `TRANSACTION_FAILED` | Blockchain transaction failed | Verify gas and account balance |
+| `UPLOAD_TIMEOUT` | Upload operation timed out | Retry with smaller file or check network |
+
+### Configuration Errors
+
+| Code | Description | Solution |
+|------|-------------|----------|
+| `MISSING_CONFIG` | Required environment variable missing | Set all required environment variables |
+| `INVALID_PRIVATE_KEY` | Private key format invalid | Verify private key format |
+| `CONTRACT_NOT_FOUND` | Flow contract address invalid | Check contract address |
+
+## Type Definitions
+
+### Core Types
+
+```typescript
+// File upload content interface
+interface UploadContent {
+  filePath: string;
+}
+
+// Upload response interface
+interface UploadResponse {
+  success: boolean;
+  fileHash?: string;
+  accessUrl?: string;
+  error?: string;
+  transactionHash?: string;
+}
+
+// Plugin configuration
+interface ZGPluginConfig {
+  indexerRpc: string;
+  evmRpc: string;
+  privateKey: string;
+  flowAddress: string;
+}
+
+// File metadata
+interface FileMetadata {
+  name: string;
+  size: number;
+  type: string;
+  lastModified: Date;
+  hash: string;
+}
+```
+
+### Action Definition
+
+```typescript
+interface ZGUploadAction {
+  name: "ZG_UPLOAD";
+  aliases: string[];
+  description: string;
+  handler: (content: UploadContent) => Promise<UploadResponse>;
+  validate: (content: UploadContent) => boolean;
+  examples: string[];
+}
+```
+
+## Integration Examples
+
+### Basic Agent Setup
+
+```javascript
+import { Agent } from "@elizaos/core";
+import { zgPlugin } from "@elizaos/plugin-0g";
+
+const agent = new Agent({
+  name: "StorageAgent",
+  plugins: [zgPlugin],
+  // ... other configuration
+});
+
+await agent.start();
+```
+
+### Custom Action Handler
+
+```javascript
+import { zgPlugin } from "@elizaos/plugin-0g";
+
+// Extend plugin with custom logic
+const customZGPlugin = {
+  ...zgPlugin,
+  actions: zgPlugin.actions.map(action => {
+    if (action.name === "ZG_UPLOAD") {
+      return {
+        ...action,
+        handler: async (content) => {
+          // Custom pre-processing
+          console.log(`Uploading file: ${content.filePath}`);
+          
+          // Call original handler
+          const result = await action.handler(content);
+          
+          // Custom post-processing
+          if (result.success) {
+            console.log(`Upload successful: ${result.fileHash}`);
+          }
+          
+          return result;
+        }
+      };
+    }
+    return action;
+  })
+};
+```
+
+## Troubleshooting
+
+For common issues and solutions, see the [Troubleshooting Guide](/elizaos-plugin/troubleshooting).

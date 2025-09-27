@@ -1,0 +1,847 @@
+---
+title: "Available Tools"
+description: "Complete reference of all MCP tools available in the 0G server"
+---
+
+# Available Tools
+
+The MCP 0G Server provides 50+ tools organized into categories for comprehensive blockchain interaction.
+
+## Blockchain Query Tools (11 tools)
+
+### Network Information
+
+#### `get_chain_info`
+Returns complete information about the 0G Galileo testnet including chain ID, RPC endpoints, and network status.
+
+```json
+{
+  "name": "get_chain_info",
+  "description": "Get comprehensive 0G Galileo testnet information",
+  "parameters": {}
+}
+```
+
+#### `get_block`
+Get detailed block information by number or hash.
+
+```json
+{
+  "name": "get_block",
+  "description": "Get block information by number or hash",
+  "parameters": {
+    "blockNumber": "string | number",
+    "includeTransactions": "boolean"
+  }
+}
+```
+
+#### `get_gas_price`
+Get current gas prices for transaction estimation.
+
+```json
+{
+  "name": "get_gas_price",
+  "description": "Get current gas prices",
+  "parameters": {}
+}
+```
+
+### Account Queries
+
+#### `get_balance`
+Get OG token balance for any address.
+
+```json
+{
+  "name": "get_balance",
+  "description": "Get OG token balance of an address",
+  "parameters": {
+    "address": "string"
+  }
+}
+```
+
+#### `get_transaction_count`
+Get the nonce (transaction count) for an address.
+
+```json
+{
+  "name": "get_transaction_count",
+  "description": "Get nonce for an address",
+  "parameters": {
+    "address": "string"
+  }
+}
+```
+
+#### `get_code`
+Get bytecode at an address to check if it's a contract.
+
+```json
+{
+  "name": "get_code",
+  "description": "Get bytecode at an address",
+  "parameters": {
+    "address": "string"
+  }
+}
+```
+
+### Transaction Queries
+
+#### `get_transaction`
+Get detailed transaction information by hash.
+
+```json
+{
+  "name": "get_transaction",
+  "description": "Get transaction details by hash",
+  "parameters": {
+    "transactionHash": "string"
+  }
+}
+```
+
+#### `estimate_gas`
+Estimate gas required for a transaction.
+
+```json
+{
+  "name": "estimate_gas",
+  "description": "Estimate gas for a transaction",
+  "parameters": {
+    "transaction": "object"
+  }
+}
+```
+
+### Smart Contract Interaction
+
+#### `call_contract`
+Call smart contract methods (read-only).
+
+```json
+{
+  "name": "call_contract",
+  "description": "Call smart contract method",
+  "parameters": {
+    "contractAddress": "string",
+    "abi": "array",
+    "methodName": "string",
+    "parameters": "array"
+  }
+}
+```
+
+#### `get_logs`
+Query event logs from smart contracts.
+
+```json
+{
+  "name": "get_logs",
+  "description": "Query contract event logs",
+  "parameters": {
+    "filter": "object"
+  }
+}
+```
+
+#### `get_faucet_info`
+Get testnet faucet information for obtaining test tokens.
+
+```json
+{
+  "name": "get_faucet_info",
+  "description": "Get testnet faucet information",
+  "parameters": {}
+}
+```
+
+## Wallet Management Tools (10 tools)
+
+### Wallet Creation
+
+#### `create_wallet`
+Create a new encrypted wallet with secure key generation.
+
+```json
+{
+  "name": "create_wallet",
+  "description": "Create a new encrypted wallet",
+  "parameters": {
+    "name": "string",
+    "password": "string"
+  }
+}
+```
+
+#### `import_wallet`
+Import wallet from private key or seed phrase.
+
+```json
+{
+  "name": "import_wallet",
+  "description": "Import wallet from private key or seed phrase",
+  "parameters": {
+    "name": "string",
+    "password": "string",
+    "privateKey": "string",
+    "seedPhrase": "string"
+  }
+}
+```
+
+### Wallet Operations
+
+#### `list_wallets`
+List all stored wallets (public information only).
+
+```json
+{
+  "name": "list_wallets",
+  "description": "List all stored wallets",
+  "parameters": {}
+}
+```
+
+#### `get_wallet`
+Get wallet details (public information only).
+
+```json
+{
+  "name": "get_wallet",
+  "description": "Get wallet details",
+  "parameters": {
+    "name": "string"
+  }
+}
+```
+
+#### `delete_wallet`
+Remove a wallet from storage.
+
+```json
+{
+  "name": "delete_wallet",
+  "description": "Delete a wallet",
+  "parameters": {
+    "name": "string",
+    "password": "string"
+  }
+}
+```
+
+#### `set_default_wallet`
+Set the default wallet for transactions.
+
+```json
+{
+  "name": "set_default_wallet",
+  "description": "Set default wallet for transactions",
+  "parameters": {
+    "name": "string"
+  }
+}
+```
+
+### Advanced Wallet Features
+
+#### `export_wallet`
+Export wallet information (public data only).
+
+```json
+{
+  "name": "export_wallet",
+  "description": "Export wallet information",
+  "parameters": {
+    "name": "string",
+    "password": "string"
+  }
+}
+```
+
+#### `derive_addresses`
+Derive multiple addresses from HD wallet.
+
+```json
+{
+  "name": "derive_addresses",
+  "description": "Derive multiple addresses from HD wallet",
+  "parameters": {
+    "name": "string",
+    "count": "number",
+    "startIndex": "number"
+  }
+}
+```
+
+#### `sign_message`
+Sign a message with a wallet.
+
+```json
+{
+  "name": "sign_message",
+  "description": "Sign a message with wallet",
+  "parameters": {
+    "walletName": "string",
+    "message": "string",
+    "password": "string"
+  }
+}
+```
+
+#### `verify_message`
+Verify a signed message.
+
+```json
+{
+  "name": "verify_message",
+  "description": "Verify a signed message",
+  "parameters": {
+    "message": "string",
+    "signature": "string",
+    "address": "string"
+  }
+}
+```
+
+## Transaction Tools (13 tools)
+
+### Transaction Preview and Creation
+
+#### `preview_transaction`
+Preview transaction with gas estimation and validation.
+
+```json
+{
+  "name": "preview_transaction",
+  "description": "Preview transaction with gas estimation",
+  "parameters": {
+    "to": "string",
+    "value": "string",
+    "data": "string",
+    "gasLimit": "string",
+    "gasPrice": "string"
+  }
+}
+```
+
+#### `create_transaction_request`
+Create a transaction request for approval.
+
+```json
+{
+  "name": "create_transaction_request",
+  "description": "Create transaction for approval",
+  "parameters": {
+    "to": "string",
+    "value": "string",
+    "data": "string",
+    "description": "string"
+  }
+}
+```
+
+### Transaction Approval Workflow
+
+#### `approve_transaction`
+Approve a pending transaction.
+
+```json
+{
+  "name": "approve_transaction",
+  "description": "Approve a pending transaction",
+  "parameters": {
+    "requestId": "string",
+    "walletPassword": "string"
+  }
+}
+```
+
+#### `reject_transaction`
+Reject a pending transaction.
+
+```json
+{
+  "name": "reject_transaction",
+  "description": "Reject a pending transaction",
+  "parameters": {
+    "requestId": "string",
+    "reason": "string"
+  }
+}
+```
+
+#### `execute_transaction`
+Execute an approved transaction.
+
+```json
+{
+  "name": "execute_transaction",
+  "description": "Execute an approved transaction",
+  "parameters": {
+    "requestId": "string"
+  }
+}
+```
+
+### Transaction Management
+
+#### `list_pending_transactions`
+List all transactions awaiting approval.
+
+```json
+{
+  "name": "list_pending_transactions",
+  "description": "List pending transactions",
+  "parameters": {}
+}
+```
+
+#### `get_transaction_request`
+Get details of a transaction request.
+
+```json
+{
+  "name": "get_transaction_request",
+  "description": "Get transaction request details",
+  "parameters": {
+    "requestId": "string"
+  }
+}
+```
+
+#### `track_transaction`
+Monitor transaction status and confirmations.
+
+```json
+{
+  "name": "track_transaction",
+  "description": "Track transaction status",
+  "parameters": {
+    "transactionHash": "string"
+  }
+}
+```
+
+### Batch and Advanced Operations
+
+#### `batch_transactions`
+Send multiple transactions in a batch.
+
+```json
+{
+  "name": "batch_transactions",
+  "description": "Send multiple transactions",
+  "parameters": {
+    "transactions": "array"
+  }
+}
+```
+
+#### `simulate_transaction`
+Simulate transaction execution without sending.
+
+```json
+{
+  "name": "simulate_transaction",
+  "description": "Simulate transaction execution",
+  "parameters": {
+    "transaction": "object"
+  }
+}
+```
+
+#### `replace_transaction`
+Replace (speed up or cancel) a pending transaction.
+
+```json
+{
+  "name": "replace_transaction",
+  "description": "Replace pending transaction",
+  "parameters": {
+    "originalHash": "string",
+    "newGasPrice": "string",
+    "action": "string"
+  }
+}
+```
+
+#### `send_transaction`
+Direct transaction sending (requires caution).
+
+```json
+{
+  "name": "send_transaction",
+  "description": "Send transaction directly",
+  "parameters": {
+    "transaction": "object",
+    "walletName": "string",
+    "password": "string"
+  }
+}
+```
+
+### Security Configuration
+
+#### `set_approval_policy`
+Configure transaction approval policies.
+
+```json
+{
+  "name": "set_approval_policy",
+  "description": "Set approval policies",
+  "parameters": {
+    "policy": "object"
+  }
+}
+```
+
+#### `add_to_whitelist`
+Add addresses to trusted whitelist.
+
+```json
+{
+  "name": "add_to_whitelist",
+  "description": "Add address to whitelist",
+  "parameters": {
+    "address": "string",
+    "label": "string"
+  }
+}
+```
+
+## Token Management Tools (16 tools)
+
+### Token Discovery & Metadata (5 tools)
+
+#### `get_token_metadata`
+Get comprehensive token information including name, symbol, decimals.
+
+```json
+{
+  "name": "get_token_metadata",
+  "description": "Get token metadata",
+  "parameters": {
+    "tokenAddress": "string"
+  }
+}
+```
+
+#### `get_token_balance`
+Check token balance for any address.
+
+```json
+{
+  "name": "get_token_balance",
+  "description": "Get token balance",
+  "parameters": {
+    "tokenAddress": "string",
+    "holderAddress": "string"
+  }
+}
+```
+
+#### `get_token_allowance`
+Check token approval amounts.
+
+```json
+{
+  "name": "get_token_allowance",
+  "description": "Get token allowance",
+  "parameters": {
+    "tokenAddress": "string",
+    "owner": "string",
+    "spender": "string"
+  }
+}
+```
+
+#### `search_tokens`
+Find tokens by name, symbol, or address.
+
+```json
+{
+  "name": "search_tokens",
+  "description": "Search for tokens",
+  "parameters": {
+    "query": "string"
+  }
+}
+```
+
+#### `add_custom_token`
+Add custom tokens to watchlist.
+
+```json
+{
+  "name": "add_custom_token",
+  "description": "Add custom token",
+  "parameters": {
+    "tokenAddress": "string",
+    "name": "string",
+    "symbol": "string"
+  }
+}
+```
+
+### Token Operations (4 tools)
+
+#### `preview_token_transfer`
+Preview token transfer with cost estimation.
+
+```json
+{
+  "name": "preview_token_transfer",
+  "description": "Preview token transfer",
+  "parameters": {
+    "tokenAddress": "string",
+    "to": "string",
+    "amount": "string"
+  }
+}
+```
+
+#### `create_token_transfer`
+Execute token transfer.
+
+```json
+{
+  "name": "create_token_transfer",
+  "description": "Transfer tokens",
+  "parameters": {
+    "tokenAddress": "string",
+    "to": "string",
+    "amount": "string"
+  }
+}
+```
+
+#### `create_token_approval`
+Approve tokens for contract spending.
+
+```json
+{
+  "name": "create_token_approval",
+  "description": "Approve token spending",
+  "parameters": {
+    "tokenAddress": "string",
+    "spender": "string",
+    "amount": "string"
+  }
+}
+```
+
+#### `revoke_token_approval`
+Revoke token approvals for security.
+
+```json
+{
+  "name": "revoke_token_approval",
+  "description": "Revoke token approval",
+  "parameters": {
+    "tokenAddress": "string",
+    "spender": "string"
+  }
+}
+```
+
+### Portfolio Management (4 tools)
+
+#### `get_token_portfolio`
+Get complete portfolio overview.
+
+```json
+{
+  "name": "get_token_portfolio",
+  "description": "Get token portfolio",
+  "parameters": {
+    "address": "string"
+  }
+}
+```
+
+#### `get_portfolio_metrics`
+Get portfolio analytics and risk assessment.
+
+```json
+{
+  "name": "get_portfolio_metrics",
+  "description": "Get portfolio metrics",
+  "parameters": {
+    "address": "string"
+  }
+}
+```
+
+#### `manage_watchlist`
+Manage token watchlist.
+
+```json
+{
+  "name": "manage_watchlist",
+  "description": "Manage token watchlist",
+  "parameters": {
+    "action": "string",
+    "tokenAddress": "string"
+  }
+}
+```
+
+#### `discover_tokens`
+Find new token opportunities.
+
+```json
+{
+  "name": "discover_tokens",
+  "description": "Discover new tokens",
+  "parameters": {
+    "criteria": "object"
+  }
+}
+```
+
+### Batch Operations (3 tools)
+
+#### `batch_token_transfers`
+Execute multiple token transfers.
+
+```json
+{
+  "name": "batch_token_transfers",
+  "description": "Batch token transfers",
+  "parameters": {
+    "transfers": "array"
+  }
+}
+```
+
+#### `batch_token_approvals`
+Execute multiple token approvals.
+
+```json
+{
+  "name": "batch_token_approvals",
+  "description": "Batch token approvals",
+  "parameters": {
+    "approvals": "array"
+  }
+}
+```
+
+#### `get_token_portfolio_with_prices`
+Get portfolio with current market prices.
+
+```json
+{
+  "name": "get_token_portfolio_with_prices",
+  "description": "Get portfolio with prices",
+  "parameters": {
+    "address": "string"
+  }
+}
+```
+
+## Smart Contract Deployment Tools (5 tools)
+
+### Contract Development
+
+#### `compile_contract`
+Compile Solidity source code to bytecode.
+
+```json
+{
+  "name": "compile_contract",
+  "description": "Compile Solidity contract",
+  "parameters": {
+    "sourceCode": "string",
+    "contractName": "string",
+    "solcVersion": "string"
+  }
+}
+```
+
+#### `deploy_contract`
+Deploy compiled contracts to blockchain.
+
+```json
+{
+  "name": "deploy_contract",
+  "description": "Deploy contract to blockchain",
+  "parameters": {
+    "bytecode": "string",
+    "abi": "array",
+    "constructorArgs": "array"
+  }
+}
+```
+
+#### `estimate_deployment_cost`
+Estimate gas costs for contract deployment.
+
+```json
+{
+  "name": "estimate_deployment_cost",
+  "description": "Estimate deployment cost",
+  "parameters": {
+    "bytecode": "string",
+    "constructorArgs": "array"
+  }
+}
+```
+
+#### `verify_contract`
+Verify deployed contract matches source code.
+
+```json
+{
+  "name": "verify_contract",
+  "description": "Verify deployed contract",
+  "parameters": {
+    "contractAddress": "string",
+    "sourceCode": "string",
+    "constructorArgs": "array"
+  }
+}
+```
+
+#### `get_deployment_history`
+Track all deployed contracts.
+
+```json
+{
+  "name": "get_deployment_history",
+  "description": "Get deployment history",
+  "parameters": {
+    "deployer": "string"
+  }
+}
+```
+
+## Usage Examples
+
+### Natural Language Interaction
+
+You can use these tools through natural language with AI assistants:
+
+```text
+"Get the latest block on 0G testnet"
+→ Uses: get_block
+
+"Check my OG balance"
+→ Uses: get_balance
+
+"Create a new wallet called 'MyWallet'"
+→ Uses: create_wallet
+
+"Send 10 OG tokens to 0x123..."
+→ Uses: preview_transaction, create_transaction_request
+
+"Deploy my ERC20 contract"
+→ Uses: compile_contract, deploy_contract
+```
+
+### Programmatic Usage
+
+Tools can also be called directly through the MCP protocol for programmatic access.

@@ -1,0 +1,167 @@
+---
+title: "Usage"
+description: "Learn how to use the ElizaOS 0G plugin in your agents"
+---
+
+# Usage
+
+The ElizaOS 0G plugin provides natural language interface for file storage operations on the 0G network.
+
+## Basic Integration
+
+Import and register the plugin in your ElizaOS agent:
+
+```javascript
+import { zgPlugin } from "@elizaos/plugin-0g";
+
+// Register the plugin with your ElizaOS agent
+const agent = new Agent({
+  plugins: [zgPlugin],
+  // ... other agent configuration
+});
+```
+
+## Natural Language Commands
+
+The plugin responds to natural language commands for file operations:
+
+### Upload Commands
+
+Users can trigger file uploads using various natural language patterns:
+
+```text
+"Upload my document.pdf"
+"Store this image.png on 0G"
+"Save my resume.docx to Zero Gravity"
+"Put this file on the decentralized network"
+"Archive this video.mp4"
+```
+
+### Command Aliases
+
+The plugin recognizes multiple command variations:
+
+- **Upload**: "upload", "store", "save", "put"
+- **Target**: "0G", "Zero Gravity", "decentralized network", "blockchain storage"
+- **File types**: Any file extension or "this file", "my document", etc.
+
+## File Upload Examples
+
+### Basic File Upload
+
+```javascript
+// User message: "Upload my presentation.pptx"
+// Plugin automatically handles the upload process
+```
+
+### Multiple File Types
+
+The plugin supports various file formats:
+
+- **Documents**: PDF, DOC, DOCX, TXT, MD
+- **Images**: JPG, PNG, GIF, SVG, WEBP
+- **Videos**: MP4, AVI, MOV, MKV
+- **Audio**: MP3, WAV, FLAC, OGG
+- **Archives**: ZIP, RAR, TAR, GZ
+- **Code**: JS, TS, PY, GO, RS, SOL
+
+### File Path Handling
+
+The plugin accepts different path formats:
+
+```text
+"Upload ./documents/report.pdf"          # Relative path
+"Store /home/user/images/photo.jpg"      # Absolute path
+"Save ~/Downloads/file.zip"              # Home directory
+"Upload file.txt"                        # Current directory
+```
+
+## Response Handling
+
+The plugin provides feedback on upload operations:
+
+### Success Response
+
+```text
+✅ Successfully uploaded file.pdf to 0G network
+📍 File hash: QmX1Y2Z3...
+🔗 Access URL: https://gateway.0g.ai/ipfs/QmX1Y2Z3...
+```
+
+### Error Handling
+
+```text
+❌ Failed to upload file.pdf
+🔍 Reason: File not found at specified path
+💡 Tip: Check file path and permissions
+```
+
+## Advanced Usage
+
+### Programmatic Access
+
+For advanced use cases, access the plugin's methods directly:
+
+```javascript
+import { zgPlugin } from "@elizaos/plugin-0g";
+
+// Access plugin actions
+const uploadAction = zgPlugin.actions.find(action => 
+  action.name === "ZG_UPLOAD"
+);
+
+// Execute upload programmatically
+const result = await uploadAction.handler({
+  filePath: "/path/to/file.pdf"
+});
+```
+
+### Custom File Handling
+
+Implement custom file processing before upload:
+
+```javascript
+// Pre-process files before upload
+const processAndUpload = async (filePath) => {
+  // Custom validation
+  if (!fs.existsSync(filePath)) {
+    throw new Error("File not found");
+  }
+  
+  // File size check
+  const stats = fs.statSync(filePath);
+  if (stats.size > 100 * 1024 * 1024) { // 100MB limit
+    throw new Error("File too large");
+  }
+  
+  // Proceed with upload
+  return await uploadToZG(filePath);
+};
+```
+
+## Best Practices
+
+### File Organization
+
+- Use descriptive file names
+- Organize files in logical directory structures
+- Consider file size limitations
+- Implement proper error handling
+
+### Security Considerations
+
+- Validate file types before upload
+- Scan files for malware if needed
+- Implement access controls
+- Monitor upload activity
+
+### Performance Optimization
+
+- Compress large files before upload
+- Use batch operations for multiple files
+- Implement retry logic for failed uploads
+- Cache frequently accessed files
+
+## Next Steps
+
+Explore the [API Reference](/elizaos-plugin/api-reference) for detailed information about available actions and interfaces.

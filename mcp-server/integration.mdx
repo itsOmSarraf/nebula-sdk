@@ -1,0 +1,398 @@
+---
+title: "Integration Guide"
+description: "How to integrate the MCP 0G Server with various AI assistants and platforms"
+---
+
+# Integration Guide
+
+The MCP 0G Server can be integrated with various AI assistants and platforms that support the Model Context Protocol (MCP).
+
+## Claude Desktop Integration
+
+### Prerequisites
+
+- Claude Desktop application installed
+- Node.js 18.0 or higher
+- MCP 0G Server installed and built
+
+### Configuration Steps
+
+1. **Locate Configuration File**
+
+   Find your Claude Desktop configuration file:
+
+   - **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+   - **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+   - **Linux**: `~/.config/Claude/claude_desktop_config.json`
+
+2. **Add Server Configuration**
+
+   Edit the configuration file to include the MCP 0G server:
+
+   ```json
+   {
+     "mcpServers": {
+       "0g-chain": {
+         "command": "node",
+         "args": ["/absolute/path/to/mcp-0g/dist/index.js"],
+         "env": {
+           "ZEROQ_RPC_URL": "https://evmrpc-testnet.0g.ai"
+         }
+       }
+     }
+   }
+   ```
+
+3. **Restart Claude Desktop**
+
+   Close and restart Claude Desktop for changes to take effect.
+
+4. **Verify Connection**
+
+   Look for the 🔌 icon in Claude's interface and confirm "0g-chain" appears in the server list.
+
+### Advanced Configuration
+
+#### Custom Environment Variables
+
+```json
+{
+  "mcpServers": {
+    "0g-chain": {
+      "command": "node",
+      "args": ["/path/to/mcp-0g/dist/index.js"],
+      "env": {
+        "ZEROQ_RPC_URL": "https://evmrpc-testnet.0g.ai",
+        "RATE_LIMIT_REQUESTS": "200",
+        "RATE_LIMIT_WINDOW": "60000",
+        "DEBUG": "mcp:0g"
+      }
+    }
+  }
+}
+```
+
+#### Using Process Manager
+
+For production deployments, use a process manager:
+
+```json
+{
+  "mcpServers": {
+    "0g-chain": {
+      "command": "pm2",
+      "args": ["start", "/path/to/mcp-0g/dist/index.js", "--name", "mcp-0g"],
+      "env": {}
+    }
+  }
+}
+```
+
+#### Docker Integration
+
+Run the server in Docker:
+
+```json
+{
+  "mcpServers": {
+    "0g-chain": {
+      "command": "docker",
+      "args": ["run", "--rm", "-p", "3000:3000", "mcp-0g-server"],
+      "env": {}
+    }
+  }
+}
+```
+
+## Other MCP-Compatible Platforms
+
+### Cline (VS Code Extension)
+
+1. **Install Cline Extension**
+
+   Install the Cline extension in VS Code.
+
+2. **Configure MCP Server**
+
+   Add to Cline's configuration:
+
+   ```json
+   {
+     "mcpServers": {
+       "0g-blockchain": {
+         "command": "node",
+         "args": ["/path/to/mcp-0g/dist/index.js"]
+       }
+     }
+   }
+   ```
+
+### Custom MCP Client
+
+For custom integrations, connect to the server using the MCP protocol:
+
+```typescript
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
+
+// Create transport
+const transport = new StdioClientTransport({
+  command: 'node',
+  args: ['/path/to/mcp-0g/dist/index.js']
+});
+
+// Create client
+const client = new Client({
+  name: "0g-blockchain-client",
+  version: "1.0.0"
+}, {
+  capabilities: {}
+});
+
+// Connect
+await client.connect(transport);
+
+// List available tools
+const tools = await client.listTools();
+console.log('Available tools:', tools);
+
+// Call a tool
+const result = await client.callTool({
+  name: 'get_chain_info',
+  arguments: {}
+});
+```
+
+## Usage Examples
+
+### Basic Blockchain Queries
+
+Once integrated, you can interact with the 0G blockchain using natural language:
+
+```text
+User: "What's the current block number on 0G testnet?"
+Assistant: [Uses get_block tool to fetch latest block information]
+
+User: "Check the balance of address 0x742d35Cc6634C0532925a3b8D4C9db96590c6C87"
+Assistant: [Uses get_balance tool to check OG token balance]
+
+User: "Get information about transaction 0xabc123..."
+Assistant: [Uses get_transaction tool to fetch transaction details]
+```
+
+### Wallet Operations
+
+```text
+User: "Create a new wallet called 'MyTestWallet'"
+Assistant: [Uses create_wallet tool with secure password]
+
+User: "List all my wallets"
+Assistant: [Uses list_wallets tool to show available wallets]
+
+User: "Import a wallet from private key"
+Assistant: [Uses import_wallet tool with provided private key]
+```
+
+### Token Management
+
+```text
+User: "Check my token portfolio"
+Assistant: [Uses get_token_portfolio tool to show all tokens]
+
+User: "Send 100 USDC tokens to 0x123..."
+Assistant: [Uses preview_token_transfer and create_token_transfer tools]
+
+User: "Approve 1000 tokens for contract 0xabc..."
+Assistant: [Uses create_token_approval tool]
+```
+
+### Smart Contract Deployment
+
+```text
+User: "Deploy this ERC20 contract with name 'MyToken'"
+Assistant: [Uses compile_contract and deploy_contract tools]
+
+User: "Estimate deployment cost for my contract"
+Assistant: [Uses estimate_deployment_cost tool]
+
+User: "Verify my deployed contract"
+Assistant: [Uses verify_contract tool]
+```
+
+## Security Considerations
+
+### Environment Variables
+
+- Never expose private keys in configuration files
+- Use environment variables for sensitive data
+- Implement proper access controls
+
+### Network Security
+
+- Use HTTPS endpoints for RPC connections
+- Implement rate limiting to prevent abuse
+- Monitor for suspicious activity
+
+### Wallet Security
+
+- Use strong passwords for wallet encryption
+- Implement multi-signature for high-value operations
+- Regular security audits and updates
+
+## Troubleshooting Integration
+
+### Common Issues
+
+1. **Server Not Starting**
+   ```bash
+   # Check Node.js version
+   node --version  # Should be 18.0+
+   
+   # Check server logs
+   DEBUG=mcp:0g node dist/index.js
+   ```
+
+2. **Claude Not Connecting**
+   ```json
+   // Verify configuration syntax
+   {
+     "mcpServers": {
+       "0g-chain": {
+         "command": "node",
+         "args": ["/absolute/path/to/dist/index.js"]
+       }
+     }
+   }
+   ```
+
+3. **Permission Errors**
+   ```bash
+   # Fix file permissions
+   chmod +x dist/index.js
+   
+   # Check directory permissions
+   ls -la /path/to/mcp-0g/
+   ```
+
+### Debug Mode
+
+Enable detailed logging:
+
+```json
+{
+  "mcpServers": {
+    "0g-chain": {
+      "command": "node",
+      "args": ["/path/to/mcp-0g/dist/index.js"],
+      "env": {
+        "DEBUG": "mcp:*",
+        "LOG_LEVEL": "debug"
+      }
+    }
+  }
+}
+```
+
+### Health Checks
+
+Test server health:
+
+```bash
+# Test server startup
+node dist/index.js --test
+
+# Check RPC connectivity
+curl -X POST -H "Content-Type: application/json" \
+  --data '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}' \
+  https://evmrpc-testnet.0g.ai
+```
+
+## Performance Optimization
+
+### Connection Pooling
+
+Configure connection pooling for better performance:
+
+```typescript
+// In server configuration
+const config = {
+  rpcUrl: process.env.ZEROQ_RPC_URL,
+  maxConnections: 10,
+  keepAlive: true,
+  timeout: 30000
+};
+```
+
+### Caching
+
+Implement caching for frequently accessed data:
+
+```typescript
+// Cache configuration
+const cacheConfig = {
+  ttl: 60000, // 1 minute
+  maxSize: 1000,
+  enabled: true
+};
+```
+
+### Rate Limiting
+
+Configure appropriate rate limits:
+
+```json
+{
+  "env": {
+    "RATE_LIMIT_REQUESTS": "100",
+    "RATE_LIMIT_WINDOW": "60000"
+  }
+}
+```
+
+## Production Deployment
+
+### Process Management
+
+Use PM2 for production:
+
+```bash
+# Install PM2
+npm install -g pm2
+
+# Start server with PM2
+pm2 start dist/index.js --name mcp-0g-server
+
+# Configure auto-restart
+pm2 startup
+pm2 save
+```
+
+### Monitoring
+
+Set up monitoring and alerting:
+
+```bash
+# Monitor with PM2
+pm2 monit
+
+# Log monitoring
+pm2 logs mcp-0g-server
+
+# Health checks
+pm2 ping mcp-0g-server
+```
+
+### Load Balancing
+
+For high availability, deploy multiple instances:
+
+```bash
+# Start multiple instances
+pm2 start dist/index.js -i 4 --name mcp-0g-cluster
+```
+
+## Next Steps
+
+- Explore the [development guide](/mcp-server/development) for customization
+- Check the [tools reference](/mcp-server/tools) for complete API documentation
+- Join the community for support and updates

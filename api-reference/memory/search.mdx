@@ -1,0 +1,496 @@
+# Search Memory
+
+Search through stored memory entries using various criteria and filters.
+
+## Method
+
+```typescript
+memory.search(query: SearchQuery): Promise<SearchResult>
+```
+
+### Parameters
+
+<ParamField path="query" type="SearchQuery" required>
+  The search query configuration
+</ParamField>
+
+<ParamField path="query.text" type="string">
+  Text to search for in entry values and metadata
+</ParamField>
+
+<ParamField path="query.tags" type="string[]">
+  Filter by specific tags
+</ParamField>
+
+<ParamField path="query.keys" type="string[]">
+  Search within specific keys only
+</ParamField>
+
+<ParamField path="query.keyPattern" type="string">
+  Regex pattern to match keys
+</ParamField>
+
+<ParamField path="query.metadata" type="Record<string, any>">
+  Filter by metadata properties
+</ParamField>
+
+<ParamField path="query.dateRange" type="DateRange">
+  Filter by creation date range
+</ParamField>
+
+<ParamField path="query.limit" type="number" default="50">
+  Maximum number of results to return
+</ParamField>
+
+<ParamField path="query.offset" type="number" default="0">
+  Number of results to skip (for pagination)
+</ParamField>
+
+<ParamField path="query.sortBy" type="string" default="timestamp">
+  Field to sort by: `timestamp`, `key`, `relevance`
+</ParamField>
+
+<ParamField path="query.sortOrder" type="string" default="desc">
+  Sort order: `asc` or `desc`
+</ParamField>
+
+## Response
+
+<ResponseField name="results" type="MemoryEntry[]">
+  Array of matching memory entries
+</ResponseField>
+
+<ResponseField name="total" type="number">
+  Total number of matching entries
+</ResponseField>
+
+<ResponseField name="hasMore" type="boolean">
+  Whether there are more results available
+</ResponseField>
+
+<ResponseField name="nextOffset" type="number">
+  Offset for the next page of results
+</ResponseField>
+
+<ResponseField name="searchTime" type="number">
+  Search execution time in milliseconds
+</ResponseField>
+
+## Examples
+
+<CodeGroup>
+
+```typescript Text Search
+import { Memory } from '0g-ai-sdk';
+
+const memory = new Memory({
+  storageKey: 'user-session-123',
+  apiKey: 'your-api-key'
+});
+
+// Search for entries containing specific text
+const results = await memory.search({
+  text: 'TypeScript programming',
+  limit: 20
+});
+
+console.log(`Found ${results.total} entries`);
+results.results.forEach(entry => {
+  console.log(`${entry.key}: ${entry.value}`);
+});
+```
+
+```typescript Tag-based Search
+// Search by tags
+const programmingEntries = await memory.search({
+  tags: ['programming', 'tutorial'],
+  sortBy: 'timestamp',
+  sortOrder: 'desc'
+});
+
+// Search with multiple tag combinations
+const specificEntries = await memory.search({
+  tags: ['javascript', 'advanced'],
+  text: 'async await',
+  limit: 10
+});
+```
+
+```typescript Advanced Filtering
+// Complex search with multiple criteria
+const results = await memory.search({
+  keyPattern: '^user_.*_profile$', // Regex pattern
+  metadata: {
+    userId: 'user123',
+    active: true
+  },
+  dateRange: {
+    from: new Date('2024-01-01'),
+    to: new Date('2024-12-31')
+  },
+  sortBy: 'relevance',
+  limit: 25
+});
+```
+
+</CodeGroup>
+
+## Search Patterns
+
+### Semantic Search
+
+```typescript
+// Search for conceptually similar content
+async function semanticSearch(concept: string) {
+  const results = await memory.search({
+    text: concept,
+    sortBy: 'relevance',
+    limit: 10
+  });
+  
+  // Further filter by semantic similarity
+  return results.results.filter(entry => {
+    const content = JSON.stringify(entry.value).toLowerCase();
+    const conceptLower = concept.toLowerCase();
+    
+    // Simple semantic matching (can be enhanced with ML)
+    const synonyms = {
+      'programming': ['coding', 'development', 'software'],
+      'learning': ['education', 'tutorial', 'training'],
+      'error': ['bug', 'issue', 'problem']
+    };
+    
+    return synonyms[conceptLower]?.some(synonym => 
+      content.includes(synonym)
+    ) || content.includes(conceptLower);
+  });
+}
+
+const learningContent = await semanticSearch('learning');
+```
+
+### Faceted Search
+
+```typescript
+// Build faceted search interface
+async function getFacets() {
+  // Get all entries to build facets
+  const allResults = await memory.search({
+    limit: 1000 // Adjust based on your data size
+  });
+  
+  const facets = {
+    tags: {},
+    users: {},
+    dateRanges: {}
+  };
+  
+  allResults.results.forEach(entry => {
+    // Count tags
+    entry.tags?.forEach(tag => {
+      facets.tags[tag] = (facets.tags[tag] || 0) + 1;
+    });
+    
+    // Count users
+    const userId = entry.metadata?.userId;
+    if (userId) {
+      facets.users[userId] = (facets.users[userId] || 0) + 1;
+    }
+    
+    // Group by date ranges
+    const date = new Date(entry.timestamp);
+    const monthKey = `${date.getFullYear()}-${date.getMonth() + 1}`;
+    facets.dateRanges[monthKey] = (facets.dateRanges[monthKey] || 0) + 1;
+  });
+  
+  return facets;
+}
+
+// Use facets for filtering
+const facets = await getFacets();
+console.log('Available tags:', Object.keys(facets.tags));
+```
+
+### Paginated Search
+
+```typescript
+// Implement pagination
+async function paginatedSearch(query: any, page: number = 1, pageSize: number = 20) {
+  const offset = (page - 1) * pageSize;
+  
+  const results = await memory.search({
+    ...query,
+    limit: pageSize,
+    offset
+  });
+  
+  return {
+    data: results.results,
+    pagination: {
+      page,
+      pageSize,
+      total: results.total,
+      totalPages: Math.ceil(results.total / pageSize),
+      hasNext: results.hasMore,
+      hasPrev: page > 1
+    }
+  };
+}
+
+// Usage
+const page1 = await paginatedSearch({ tags: ['programming'] }, 1, 10);
+const page2 = await paginatedSearch({ tags: ['programming'] }, 2, 10);
+```
+
+## Search Optimization
+
+### Indexed Search
+
+```typescript
+// Build search index for better performance
+class MemorySearchIndex {
+  private index: Map<string, Set<string>> = new Map();
+  
+  async buildIndex() {
+    const allEntries = await memory.search({ limit: 10000 });
+    
+    allEntries.results.forEach(entry => {
+      // Index by tags
+      entry.tags?.forEach(tag => {
+        if (!this.index.has(tag)) {
+          this.index.set(tag, new Set());
+        }
+        this.index.get(tag)!.add(entry.key);
+      });
+      
+      // Index by text content
+      const text = JSON.stringify(entry.value).toLowerCase();
+      const words = text.split(/\W+/);
+      
+      words.forEach(word => {
+        if (word.length > 2) { // Skip short words
+          if (!this.index.has(word)) {
+            this.index.set(word, new Set());
+          }
+          this.index.get(word)!.add(entry.key);
+        }
+      });
+    });
+  }
+  
+  async searchByIndex(terms: string[]): Promise<string[]> {
+    const matchingSets = terms.map(term => 
+      this.index.get(term.toLowerCase()) || new Set()
+    );
+    
+    if (matchingSets.length === 0) return [];
+    
+    // Find intersection of all sets
+    return Array.from(matchingSets.reduce((acc, set) => 
+      new Set([...acc].filter(x => set.has(x)))
+    ));
+  }
+}
+
+const searchIndex = new MemorySearchIndex();
+await searchIndex.buildIndex();
+```
+
+### Cached Search
+
+```typescript
+// Cache frequent searches
+class CachedSearch {
+  private cache = new Map<string, { result: any, timestamp: number }>();
+  private cacheTTL = 5 * 60 * 1000; // 5 minutes
+  
+  private getCacheKey(query: any): string {
+    return JSON.stringify(query);
+  }
+  
+  async search(query: any) {
+    const cacheKey = this.getCacheKey(query);
+    const cached = this.cache.get(cacheKey);
+    
+    if (cached && Date.now() - cached.timestamp < this.cacheTTL) {
+      return cached.result;
+    }
+    
+    const result = await memory.search(query);
+    this.cache.set(cacheKey, {
+      result,
+      timestamp: Date.now()
+    });
+    
+    return result;
+  }
+}
+
+const cachedSearch = new CachedSearch();
+```
+
+## Real-time Search
+
+### Auto-complete
+
+```typescript
+async function getAutocompleteSuggestions(partial: string) {
+  const results = await memory.search({
+    text: partial,
+    limit: 10,
+    sortBy: 'relevance'
+  });
+  
+  // Extract unique suggestions
+  const suggestions = new Set<string>();
+  
+  results.results.forEach(entry => {
+    // Extract relevant terms from content
+    const content = JSON.stringify(entry.value);
+    const words = content.toLowerCase().split(/\W+/);
+    
+    words.forEach(word => {
+      if (word.startsWith(partial.toLowerCase()) && word.length > partial.length) {
+        suggestions.add(word);
+      }
+    });
+    
+    // Add tags that match
+    entry.tags?.forEach(tag => {
+      if (tag.toLowerCase().startsWith(partial.toLowerCase())) {
+        suggestions.add(tag);
+      }
+    });
+  });
+  
+  return Array.from(suggestions).slice(0, 10);
+}
+
+// Usage in UI
+const suggestions = await getAutocompleteSuggestions('prog');
+// Returns: ['programming', 'progress', 'program']
+```
+
+### Live Search
+
+```typescript
+// Debounced live search
+class LiveSearch {
+  private debounceTimer: NodeJS.Timeout | null = null;
+  private debounceDelay = 300; // ms
+  
+  search(query: string, callback: (results: any) => void) {
+    if (this.debounceTimer) {
+      clearTimeout(this.debounceTimer);
+    }
+    
+    this.debounceTimer = setTimeout(async () => {
+      if (query.trim().length > 2) {
+        const results = await memory.search({
+          text: query,
+          limit: 20,
+          sortBy: 'relevance'
+        });
+        callback(results);
+      }
+    }, this.debounceDelay);
+  }
+}
+
+const liveSearch = new LiveSearch();
+
+// In your UI event handler
+liveSearch.search(inputValue, (results) => {
+  updateSearchResults(results);
+});
+```
+
+## Analytics and Insights
+
+### Search Analytics
+
+```typescript
+// Track search patterns
+class SearchAnalytics {
+  async logSearch(query: any, resultCount: number) {
+    await memory.store({
+      key: `search_log_${Date.now()}`,
+      value: {
+        query,
+        resultCount,
+        timestamp: new Date()
+      },
+      tags: ['analytics', 'search'],
+      ttl: 30 * 24 * 3600 // 30 days
+    });
+  }
+  
+  async getPopularSearches() {
+    const logs = await memory.search({
+      tags: ['analytics', 'search'],
+      limit: 1000,
+      sortBy: 'timestamp',
+      sortOrder: 'desc'
+    });
+    
+    const queryFreq = {};
+    logs.results.forEach(log => {
+      const queryText = log.value.query.text || 'empty';
+      queryFreq[queryText] = (queryFreq[queryText] || 0) + 1;
+    });
+    
+    return Object.entries(queryFreq)
+      .sort(([,a], [,b]) => b - a)
+      .slice(0, 10);
+  }
+}
+
+const analytics = new SearchAnalytics();
+
+// Log each search
+const results = await memory.search(query);
+await analytics.logSearch(query, results.total);
+```
+
+## Error Handling
+
+```typescript
+async function robustSearch(query: any, retries: number = 3) {
+  for (let i = 0; i < retries; i++) {
+    try {
+      return await memory.search(query);
+    } catch (error) {
+      console.warn(`Search attempt ${i + 1} failed:`, error.message);
+      
+      if (i === retries - 1) {
+        // Last attempt failed, return empty result
+        return {
+          results: [],
+          total: 0,
+          hasMore: false,
+          nextOffset: 0,
+          searchTime: 0
+        };
+      }
+      
+      // Wait before retry
+      await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
+    }
+  }
+}
+```
+
+## Best Practices
+
+1. **Use specific tags** for better filtering
+2. **Implement pagination** for large result sets
+3. **Cache frequent searches** to improve performance
+4. **Use debouncing** for live search features
+5. **Build search indices** for complex queries
+6. **Monitor search performance** and optimize accordingly
+
+## Related
+
+- [Store Memory](/api-reference/memory/store)
+- [Retrieve Memory](/api-reference/memory/retrieve)
+- [Agent Tools](/api-reference/agent/tools)

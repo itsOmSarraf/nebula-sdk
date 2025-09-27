@@ -1,0 +1,392 @@
+# Retrieve Memory
+
+Retrieve stored data from the 0G decentralized storage network.
+
+## Method
+
+```typescript
+memory.retrieve(key: string): Promise<MemoryEntry | null>
+```
+
+### Parameters
+
+<ParamField path="key" type="string" required>
+  The unique identifier of the memory entry to retrieve
+</ParamField>
+
+## Response
+
+Returns a `MemoryEntry` object if found, or `null` if the key doesn't exist.
+
+### MemoryEntry Properties
+
+<ResponseField name="key" type="string">
+  The unique identifier of the entry
+</ResponseField>
+
+<ResponseField name="value" type="any">
+  The stored data (automatically deserialized)
+</ResponseField>
+
+<ResponseField name="metadata" type="Record<string, any>">
+  Additional metadata associated with the entry
+</ResponseField>
+
+<ResponseField name="tags" type="string[]">
+  Tags associated with the entry
+</ResponseField>
+
+<ResponseField name="timestamp" type="Date">
+  When the entry was stored
+</ResponseField>
+
+<ResponseField name="ttl" type="number">
+  Time-to-live in seconds (if set)
+</ResponseField>
+
+<ResponseField name="expiresAt" type="Date">
+  When the entry expires (if TTL is set)
+</ResponseField>
+
+## Examples
+
+<CodeGroup>
+
+```typescript Basic Retrieval
+import { Memory } from '0g-ai-sdk';
+
+const memory = new Memory({
+  storageKey: 'user-session-123',
+  apiKey: 'your-api-key'
+});
+
+// Retrieve a single entry
+const userPrefs = await memory.retrieve('user_preferences');
+
+if (userPrefs) {
+  console.log('User preferences:', userPrefs.value);
+  console.log('Stored at:', userPrefs.timestamp);
+} else {
+  console.log('No preferences found');
+}
+```
+
+```typescript With Error Handling
+try {
+  const entry = await memory.retrieve('conversation_summary_001');
+  
+  if (entry) {
+    const { summary, keyPoints } = entry.value;
+    console.log('Summary:', summary);
+    console.log('Key points:', keyPoints);
+    
+    // Check if entry is about to expire
+    if (entry.expiresAt && entry.expiresAt < new Date(Date.now() + 3600000)) {
+      console.warn('Entry expires soon:', entry.expiresAt);
+    }
+  }
+} catch (error) {
+  console.error('Failed to retrieve memory:', error.message);
+}
+```
+
+```typescript Batch Retrieval
+// Retrieve multiple entries
+const keys = ['skill_javascript', 'skill_python', 'skill_typescript'];
+
+const entries = await Promise.all(
+  keys.map(async (key) => {
+    try {
+      const entry = await memory.retrieve(key);
+      return { key, entry };
+    } catch {
+      return { key, entry: null };
+    }
+  })
+);
+
+// Process results
+const skills = entries
+  .filter(({ entry }) => entry !== null)
+  .map(({ key, entry }) => ({
+    skill: key.replace('skill_', ''),
+    level: entry.value.level,
+    lastUsed: entry.value.lastUsed
+  }));
+
+console.log('User skills:', skills);
+```
+
+</CodeGroup>
+
+## Advanced Usage
+
+### Conditional Retrieval
+
+```typescript
+// Retrieve with fallback
+async function getWithFallback(primaryKey: string, fallbackKey: string) {
+  let entry = await memory.retrieve(primaryKey);
+  
+  if (!entry) {
+    entry = await memory.retrieve(fallbackKey);
+  }
+  
+  return entry;
+}
+
+const config = await getWithFallback('config_user_123', 'config_default');
+```
+
+### Version Management
+
+```typescript
+// Get latest version of a document
+async function getLatestDocument(baseKey: string) {
+  // First, get the latest version pointer
+  const latest = await memory.retrieve(`${baseKey}_latest`);
+  
+  if (latest?.value?.currentVersion) {
+    return await memory.retrieve(latest.value.currentVersion);
+  }
+  
+  // Fallback to base key
+  return await memory.retrieve(baseKey);
+}
+
+const document = await getLatestDocument('document');
+```
+
+### Cache Pattern
+
+```typescript
+class MemoryCache {
+  constructor(private memory: Memory) {}
+  
+  async get(key: string) {
+    const entry = await this.memory.retrieve(`cache:${key}`);
+    
+    if (!entry) {
+      return null;
+    }
+    
+    // Check if expired
+    if (entry.expiresAt && entry.expiresAt < new Date()) {
+      return null;
+    }
+    
+    return entry.value;
+  }
+  
+  async getOrSet(key: string, factory: () => Promise<any>, ttl: number = 3600) {
+    let value = await this.get(key);
+    
+    if (value === null) {
+      value = await factory();
+      await this.memory.store({
+        key: `cache:${key}`,
+        value,
+        ttl
+      });
+    }
+    
+    return value;
+  }
+}
+
+const cache = new MemoryCache(memory);
+
+// Get from cache or compute
+const expensiveData = await cache.getOrSet(
+  'expensive_computation',
+  async () => {
+    // Expensive operation
+    return await computeExpensiveData();
+  },
+  1800 // 30 minutes
+);
+```
+
+## Integration Patterns
+
+### Chat Context Retrieval
+
+```typescript
+async function getChatContext(sessionId: string) {
+  const context = await memory.retrieve(`chat_context:${sessionId}`);
+  
+  if (context) {
+    return {
+      messages: context.value.messages || [],
+      systemPrompt: context.value.systemPrompt,
+      userProfile: context.value.userProfile
+    };
+  }
+  
+  return {
+    messages: [],
+    systemPrompt: 'You are a helpful assistant.',
+    userProfile: null
+  };
+}
+
+// Use in chat
+const { messages, systemPrompt, userProfile } = await getChatContext('session123');
+
+const response = await chat.send({
+  message: 'Continue our conversation',
+  context: messages,
+  systemPrompt
+});
+```
+
+### User Profile Management
+
+```typescript
+async function getUserProfile(userId: string) {
+  const profile = await memory.retrieve(`user:${userId}`);
+  
+  if (!profile) {
+    // Return default profile
+    return {
+      preferences: {},
+      settings: {},
+      history: []
+    };
+  }
+  
+  return {
+    ...profile.value,
+    lastAccessed: profile.timestamp,
+    metadata: profile.metadata
+  };
+}
+
+async function updateUserProfile(userId: string, updates: any) {
+  const current = await getUserProfile(userId);
+  
+  const updated = {
+    ...current,
+    ...updates,
+    lastModified: new Date()
+  };
+  
+  await memory.store({
+    key: `user:${userId}`,
+    value: updated,
+    metadata: {
+      version: (current.metadata?.version || 0) + 1
+    }
+  });
+}
+```
+
+### Configuration Management
+
+```typescript
+async function getConfig(key: string, defaultValue?: any) {
+  const config = await memory.retrieve(`config:${key}`);
+  return config?.value ?? defaultValue;
+}
+
+async function getAppConfig() {
+  const [theme, language, features] = await Promise.all([
+    getConfig('theme', 'light'),
+    getConfig('language', 'en'),
+    getConfig('features', {})
+  ]);
+  
+  return { theme, language, features };
+}
+```
+
+## Error Handling
+
+```typescript
+async function safeRetrieve(key: string, defaultValue = null) {
+  try {
+    const entry = await memory.retrieve(key);
+    return entry?.value ?? defaultValue;
+  } catch (error) {
+    switch (error.code) {
+      case 'KEY_NOT_FOUND':
+        return defaultValue;
+      case 'NETWORK_ERROR':
+        console.warn('Network error, using default:', error.message);
+        return defaultValue;
+      case 'DESERIALIZATION_ERROR':
+        console.error('Data corruption detected for key:', key);
+        return defaultValue;
+      default:
+        console.error('Unexpected retrieval error:', error.message);
+        throw error;
+    }
+  }
+}
+
+// Usage
+const userPrefs = await safeRetrieve('user_preferences', {
+  theme: 'light',
+  language: 'en'
+});
+```
+
+## Performance Optimization
+
+### Parallel Retrieval
+
+```typescript
+// Retrieve related data in parallel
+async function getFullUserContext(userId: string) {
+  const [profile, preferences, history, settings] = await Promise.all([
+    memory.retrieve(`user:${userId}`),
+    memory.retrieve(`preferences:${userId}`),
+    memory.retrieve(`history:${userId}`),
+    memory.retrieve(`settings:${userId}`)
+  ]);
+  
+  return {
+    profile: profile?.value,
+    preferences: preferences?.value,
+    history: history?.value,
+    settings: settings?.value
+  };
+}
+```
+
+### Selective Loading
+
+```typescript
+// Load only what's needed
+async function getPartialData(key: string, fields: string[]) {
+  const entry = await memory.retrieve(key);
+  
+  if (!entry) return null;
+  
+  // Extract only requested fields
+  const result = {};
+  fields.forEach(field => {
+    if (entry.value[field] !== undefined) {
+      result[field] = entry.value[field];
+    }
+  });
+  
+  return result;
+}
+
+const userBasics = await getPartialData('user:123', ['name', 'email']);
+```
+
+## Best Practices
+
+1. **Handle null returns** gracefully with default values
+2. **Check expiration** before using retrieved data
+3. **Use parallel retrieval** for related data
+4. **Implement caching** for frequently accessed data
+5. **Validate data integrity** after retrieval
+
+## Related
+
+- [Store Memory](/api-reference/memory/store)
+- [Search Memory](/api-reference/memory/search)
+- [Chat Integration](/api-reference/chat/history)

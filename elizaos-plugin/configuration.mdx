@@ -1,0 +1,73 @@
+---
+title: "Configuration"
+description: "Configure the ElizaOS 0G plugin with required environment variables"
+---
+
+# Configuration
+
+The ElizaOS 0G plugin requires several environment variables to connect to the 0G network and perform storage operations.
+
+## Required Environment Variables
+
+Set the following environment variables in your `.env` file or deployment environment:
+
+```bash
+ZEROG_INDEXER_RPC=<0G indexer RPC endpoint>
+ZEROG_EVM_RPC=<0G EVM RPC endpoint>
+ZEROG_PRIVATE_KEY=<Private key for transactions>
+ZEROG_FLOW_ADDRESS=<0G Flow contract address>
+```
+
+### Variable Descriptions
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `ZEROG_INDEXER_RPC` | 0G indexer RPC endpoint for querying network state | `https://indexer.0g.ai` |
+| `ZEROG_EVM_RPC` | 0G EVM-compatible RPC endpoint for transactions | `https://evmrpc.0g.ai` |
+| `ZEROG_PRIVATE_KEY` | Private key for signing transactions (keep secure!) | `0x1234...` |
+| `ZEROG_FLOW_ADDRESS` | Contract address for 0G Flow operations | `0xabcd...` |
+
+## Security Best Practices
+
+<Warning>
+Never commit private keys to version control or expose them in client-side code.
+</Warning>
+
+### Environment Variable Security
+
+- Use secure environment variable management systems
+- Rotate private keys periodically
+- Ensure RPC endpoints are accessible and trusted
+- Verify private key has sufficient permissions for operations
+
+### Production Considerations
+
+- Use separate keys for development and production
+- Implement key rotation policies
+- Monitor transaction activity
+- Set up alerts for unusual activity
+
+## Configuration Validation
+
+The plugin will validate your configuration on startup. Common issues include:
+
+- **Invalid RPC endpoints**: Ensure URLs are accessible
+- **Insufficient permissions**: Verify private key has required permissions
+- **Network connectivity**: Check firewall and network settings
+- **Contract addresses**: Ensure Flow contract address is correct
+
+## Example Configuration
+
+Create a `.env` file in your project root:
+
+```bash
+# 0G Network Configuration
+ZEROG_INDEXER_RPC=https://indexer-testnet.0g.ai
+ZEROG_EVM_RPC=https://evmrpc-testnet.0g.ai
+ZEROG_PRIVATE_KEY=your_private_key_here
+ZEROG_FLOW_ADDRESS=0x1234567890abcdef1234567890abcdef12345678
+```
+
+## Next Steps
+
+With configuration complete, learn how to [use the plugin](/elizaos-plugin/usage) in your ElizaOS agents.

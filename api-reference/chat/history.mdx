@@ -1,0 +1,327 @@
+# Chat History
+
+Manage and retrieve conversation history for context-aware interactions.
+
+## Method
+
+```typescript
+chat.getHistory(): ChatMessage[]
+chat.addToHistory(message: ChatMessage): void
+chat.clearHistory(): void
+```
+
+## Chat Message Format
+
+```typescript
+interface ChatMessage {
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  timestamp?: Date;
+  metadata?: Record<string, any>;
+}
+```
+
+### Properties
+
+<ParamField path="role" type="string" required>
+  The role of the message sender: `user`, `assistant`, or `system`
+</ParamField>
+
+<ParamField path="content" type="string" required>
+  The text content of the message
+</ParamField>
+
+<ParamField path="timestamp" type="Date">
+  When the message was created (auto-generated if not provided)
+</ParamField>
+
+<ParamField path="metadata" type="Record<string, any>">
+  Additional metadata associated with the message
+</ParamField>
+
+## Examples
+
+<CodeGroup>
+
+```typescript Basic History Management
+import { Chat } from '0g-ai-sdk';
+
+const chat = new Chat({
+  apiKey: 'your-api-key',
+  model: 'llama-3.3-70b-instruct'
+});
+
+// Send a message and automatically add to history
+const response = await chat.send({
+  message: 'Hello, I need help with coding',
+  systemPrompt: 'You are a helpful programming assistant.'
+});
+
+// Get current history
+const history = chat.getHistory();
+console.log('Conversation history:', history);
+
+// Manually add a message to history
+chat.addToHistory({
+  role: 'user',
+  content: 'What is TypeScript?',
+  timestamp: new Date()
+});
+
+// Clear all history
+chat.clearHistory();
+```
+
+```typescript Persistent History with Memory
+import { Chat, Memory } from '0g-ai-sdk';
+
+const chat = new Chat({ apiKey: 'your-api-key' });
+const memory = new Memory({ storageKey: 'user-session-123' });
+
+async function loadHistoryFromMemory() {
+  // Load previous conversation
+  const savedHistory = await memory.retrieve('chat_history');
+  
+  if (savedHistory) {
+    // Restore history to chat instance
+    savedHistory.forEach(message => {
+      chat.addToHistory(message);
+    });
+  }
+}
+
+async function saveHistoryToMemory() {
+  const currentHistory = chat.getHistory();
+  await memory.store({
+    key: 'chat_history',
+    value: currentHistory
+  });
+}
+
+// Usage
+await loadHistoryFromMemory();
+
+const response = await chat.send({
+  message: 'Continue our previous conversation',
+  context: chat.getHistory()
+});
+
+await saveHistoryToMemory();
+```
+
+```typescript Advanced History Filtering
+const chat = new Chat({ apiKey: 'your-api-key' });
+
+// Get only user messages
+const userMessages = chat.getHistory().filter(msg => msg.role === 'user');
+
+// Get messages from last hour
+const recentMessages = chat.getHistory().filter(msg => {
+  const hourAgo = new Date(Date.now() - 60 * 60 * 1000);
+  return msg.timestamp && msg.timestamp > hourAgo;
+});
+
+// Get messages with specific metadata
+const taggedMessages = chat.getHistory().filter(msg => 
+  msg.metadata?.tags?.includes('important')
+);
+
+// Limit history size (keep last 20 messages)
+const history = chat.getHistory();
+if (history.length > 20) {
+  const limitedHistory = history.slice(-20);
+  chat.clearHistory();
+  limitedHistory.forEach(msg => chat.addToHistory(msg));
+}
+```
+
+</CodeGroup>
+
+## Context Management
+
+### Automatic Context
+
+When using `chat.send()` or `chat.stream()`, you can include context automatically:
+
+```typescript
+// Send with full conversation context
+const response = await chat.send({
+  message: 'What did we discuss earlier?',
+  context: chat.getHistory(), // Include full history
+  systemPrompt: 'Reference our previous conversation.'
+});
+```
+
+### Selective Context
+
+Include only relevant parts of the conversation:
+
+```typescript
+const history = chat.getHistory();
+
+// Include only last 5 messages for context
+const recentContext = history.slice(-5);
+
+const response = await chat.send({
+  message: 'Summarize our recent discussion',
+  context: recentContext
+});
+```
+
+### Context Summarization
+
+For long conversations, summarize older messages:
+
+```typescript
+async function getOptimizedContext() {
+  const history = chat.getHistory();
+  
+  if (history.length <= 10) {
+    return history;
+  }
+  
+  // Keep recent messages as-is
+  const recentMessages = history.slice(-5);
+  
+  // Summarize older messages
+  const olderMessages = history.slice(0, -5);
+  const summary = await chat.send({
+    message: 'Summarize this conversation briefly',
+    context: olderMessages,
+    systemPrompt: 'Provide a concise summary of the key points discussed.'
+  });
+  
+  return [
+    {
+      role: 'system',
+      content: `Previous conversation summary: ${summary.content}`,
+      timestamp: new Date()
+    },
+    ...recentMessages
+  ];
+}
+
+// Use optimized context
+const optimizedContext = await getOptimizedContext();
+const response = await chat.send({
+  message: 'Based on everything we\'ve discussed...',
+  context: optimizedContext
+});
+```
+
+## History Export/Import
+
+### Export History
+
+```typescript
+function exportHistory(chat: Chat): string {
+  const history = chat.getHistory();
+  return JSON.stringify(history, null, 2);
+}
+
+// Export to file
+const historyJson = exportHistory(chat);
+require('fs').writeFileSync('chat-history.json', historyJson);
+```
+
+### Import History
+
+```typescript
+function importHistory(chat: Chat, historyJson: string): void {
+  const history = JSON.parse(historyJson);
+  
+  chat.clearHistory();
+  history.forEach((message: ChatMessage) => {
+    chat.addToHistory({
+      ...message,
+      timestamp: new Date(message.timestamp) // Convert string back to Date
+    });
+  });
+}
+
+// Import from file
+const historyJson = require('fs').readFileSync('chat-history.json', 'utf8');
+importHistory(chat, historyJson);
+```
+
+## Best Practices
+
+### Memory Management
+
+```typescript
+// Limit history size to prevent memory issues
+const MAX_HISTORY_SIZE = 50;
+
+function maintainHistorySize(chat: Chat) {
+  const history = chat.getHistory();
+  
+  if (history.length > MAX_HISTORY_SIZE) {
+    // Keep system messages and recent messages
+    const systemMessages = history.filter(msg => msg.role === 'system');
+    const recentMessages = history.slice(-(MAX_HISTORY_SIZE - systemMessages.length));
+    
+    chat.clearHistory();
+    [...systemMessages, ...recentMessages].forEach(msg => {
+      chat.addToHistory(msg);
+    });
+  }
+}
+```
+
+### Privacy and Security
+
+```typescript
+// Remove sensitive information from history
+function sanitizeHistory(chat: Chat) {
+  const history = chat.getHistory();
+  const sensitivePatterns = [
+    /\b\d{4}[-\s]?\d{4}[-\s]?\d{4}[-\s]?\d{4}\b/, // Credit card numbers
+    /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/, // Email addresses
+    /\b\d{3}-\d{2}-\d{4}\b/ // SSN pattern
+  ];
+  
+  chat.clearHistory();
+  
+  history.forEach(message => {
+    let sanitizedContent = message.content;
+    
+    sensitivePatterns.forEach(pattern => {
+      sanitizedContent = sanitizedContent.replace(pattern, '[REDACTED]');
+    });
+    
+    chat.addToHistory({
+      ...message,
+      content: sanitizedContent
+    });
+  });
+}
+```
+
+## Error Handling
+
+```typescript
+try {
+  const history = chat.getHistory();
+  
+  // Validate history before using
+  const validHistory = history.filter(msg => 
+    msg.role && msg.content && typeof msg.content === 'string'
+  );
+  
+  const response = await chat.send({
+    message: 'Continue our conversation',
+    context: validHistory
+  });
+} catch (error) {
+  console.error('Error using chat history:', error);
+  
+  // Fallback: clear corrupted history
+  chat.clearHistory();
+}
+```
+
+## Related
+
+- [Create Chat Instance](/api-reference/chat/create)
+- [Stream Responses](/api-reference/chat/stream)
+- [Memory Storage](/api-reference/memory/store)

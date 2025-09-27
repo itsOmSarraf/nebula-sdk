@@ -1,0 +1,442 @@
+# Create Agent
+
+Create an autonomous AI agent with custom tools and capabilities.
+
+## Constructor
+
+```typescript
+new Agent(config: AgentConfig)
+```
+
+### Parameters
+
+<ParamField path="config" type="AgentConfig" required>
+  Configuration object for the agent
+</ParamField>
+
+<ParamField path="config.name" type="string" required>
+  Name of the agent
+</ParamField>
+
+<ParamField path="config.description" type="string" required>
+  Description of the agent's purpose and capabilities
+</ParamField>
+
+<ParamField path="config.systemPrompt" type="string">
+  System prompt that defines the agent's behavior and personality
+</ParamField>
+
+<ParamField path="config.tools" type="AgentTool[]" default="[]">
+  Array of tools available to the agent
+</ParamField>
+
+<ParamField path="config.memory" type="Memory">
+  Memory instance for persistent storage
+</ParamField>
+
+<ParamField path="config.chat" type="Chat">
+  Chat instance for AI interactions
+</ParamField>
+
+<ParamField path="config.maxIterations" type="number" default="10">
+  Maximum number of iterations for task execution
+</ParamField>
+
+<ParamField path="config.timeout" type="number" default="300000">
+  Timeout for agent execution in milliseconds
+</ParamField>
+
+## Response
+
+Returns an `Agent` instance that can execute tasks autonomously.
+
+## Examples
+
+<CodeGroup>
+
+```typescript Basic Agent
+import { Agent, Chat, Memory } from '0g-ai-sdk';
+
+const chat = new Chat({ apiKey: 'your-api-key' });
+const memory = new Memory({ storageKey: 'agent-memory' });
+
+const agent = new Agent({
+  name: 'Assistant',
+  description: 'A helpful AI assistant that can perform various tasks',
+  systemPrompt: `You are a helpful AI assistant. You can use tools to help users accomplish their goals. 
+                 Always be polite and explain what you're doing.`,
+  chat,
+  memory,
+  maxIterations: 5
+});
+```
+
+```typescript Agent with Tools
+const agent = new Agent({
+  name: 'Developer Assistant',
+  description: 'An AI agent that helps with software development tasks',
+  systemPrompt: 'You are an expert software developer. Use your tools to help with coding tasks.',
+  tools: [
+    {
+      name: 'getCurrentTime',
+      description: 'Get the current date and time',
+      execute: () => new Date().toISOString()
+    },
+    {
+      name: 'calculateSum',
+      description: 'Calculate the sum of two numbers',
+      parameters: {
+        type: 'object',
+        properties: {
+          a: { type: 'number', description: 'First number' },
+          b: { type: 'number', description: 'Second number' }
+        },
+        required: ['a', 'b']
+      },
+      execute: ({ a, b }) => a + b
+    },
+    {
+      name: 'searchWeb',
+      description: 'Search the web for information',
+      parameters: {
+        type: 'object',
+        properties: {
+          query: { type: 'string', description: 'Search query' }
+        },
+        required: ['query']
+      },
+      execute: async ({ query }) => {
+        // Implement web search logic
+        return `Search results for: ${query}`;
+      }
+    }
+  ],
+  chat,
+  memory
+});
+```
+
+```typescript Advanced Agent Configuration
+const agent = new Agent({
+  name: 'Research Assistant',
+  description: 'An AI agent specialized in research and analysis',
+  systemPrompt: `You are a research assistant with access to various tools.
+                 Your goal is to help users find accurate information and provide thorough analysis.
+                 Always cite your sources and be transparent about your process.`,
+  tools: [
+    {
+      name: 'storeResearch',
+      description: 'Store research findings for later reference',
+      parameters: {
+        type: 'object',
+        properties: {
+          topic: { type: 'string', description: 'Research topic' },
+          findings: { type: 'string', description: 'Research findings' },
+          sources: { type: 'array', items: { type: 'string' }, description: 'Source URLs' }
+        },
+        required: ['topic', 'findings']
+      },
+      execute: async ({ topic, findings, sources = [] }) => {
+        await memory.store({
+          key: `research:${topic}:${Date.now()}`,
+          value: { findings, sources, timestamp: new Date() },
+          tags: ['research', topic.toLowerCase()]
+        });
+        return 'Research stored successfully';
+      }
+    },
+    {
+      name: 'retrieveResearch',
+      description: 'Retrieve previous research on a topic',
+      parameters: {
+        type: 'object',
+        properties: {
+          topic: { type: 'string', description: 'Research topic to search for' }
+        },
+        required: ['topic']
+      },
+      execute: async ({ topic }) => {
+        const results = await memory.search({
+          tags: ['research', topic.toLowerCase()],
+          limit: 5
+        });
+        return results.results.map(r => r.value);
+      }
+    }
+  ],
+  chat,
+  memory,
+  maxIterations: 15,
+  timeout: 600000 // 10 minutes
+});
+```
+
+</CodeGroup>
+
+## Tool Definition
+
+### AgentTool Interface
+
+```typescript
+interface AgentTool {
+  name: string;
+  description: string;
+  parameters?: JSONSchema;
+  execute: (params?: any) => Promise<any> | any;
+}
+```
+
+<ParamField path="name" type="string" required>
+  Unique name for the tool
+</ParamField>
+
+<ParamField path="description" type="string" required>
+  Description of what the tool does (used by AI to decide when to use it)
+</ParamField>
+
+<ParamField path="parameters" type="JSONSchema">
+  JSON Schema defining the tool's parameters
+</ParamField>
+
+<ParamField path="execute" type="function" required>
+  Function that executes the tool's functionality
+</ParamField>
+
+## Built-in Tool Examples
+
+### File System Tools
+
+```typescript
+const fileSystemTools = [
+  {
+    name: 'readFile',
+    description: 'Read the contents of a file',
+    parameters: {
+      type: 'object',
+      properties: {
+        path: { type: 'string', description: 'File path to read' }
+      },
+      required: ['path']
+    },
+    execute: async ({ path }) => {
+      const fs = require('fs').promises;
+      return await fs.readFile(path, 'utf8');
+    }
+  },
+  {
+    name: 'writeFile',
+    description: 'Write content to a file',
+    parameters: {
+      type: 'object',
+      properties: {
+        path: { type: 'string', description: 'File path to write' },
+        content: { type: 'string', description: 'Content to write' }
+      },
+      required: ['path', 'content']
+    },
+    execute: async ({ path, content }) => {
+      const fs = require('fs').promises;
+      await fs.writeFile(path, content, 'utf8');
+      return 'File written successfully';
+    }
+  }
+];
+```
+
+### API Integration Tools
+
+```typescript
+const apiTools = [
+  {
+    name: 'httpRequest',
+    description: 'Make an HTTP request to an API',
+    parameters: {
+      type: 'object',
+      properties: {
+        url: { type: 'string', description: 'URL to request' },
+        method: { type: 'string', enum: ['GET', 'POST', 'PUT', 'DELETE'], default: 'GET' },
+        headers: { type: 'object', description: 'Request headers' },
+        body: { type: 'string', description: 'Request body' }
+      },
+      required: ['url']
+    },
+    execute: async ({ url, method = 'GET', headers = {}, body }) => {
+      const fetch = require('node-fetch');
+      const response = await fetch(url, {
+        method,
+        headers,
+        body: body ? JSON.stringify(body) : undefined
+      });
+      return await response.json();
+    }
+  }
+];
+```
+
+### Database Tools
+
+```typescript
+const databaseTools = [
+  {
+    name: 'queryDatabase',
+    description: 'Execute a SQL query on the database',
+    parameters: {
+      type: 'object',
+      properties: {
+        query: { type: 'string', description: 'SQL query to execute' },
+        params: { type: 'array', description: 'Query parameters' }
+      },
+      required: ['query']
+    },
+    execute: async ({ query, params = [] }) => {
+      // Implement database query logic
+      // This is a placeholder - use your actual database client
+      console.log('Executing query:', query, 'with params:', params);
+      return { rows: [], rowCount: 0 };
+    }
+  }
+];
+```
+
+## Agent Specializations
+
+### Code Assistant Agent
+
+```typescript
+function createCodeAssistant() {
+  return new Agent({
+    name: 'Code Assistant',
+    description: 'An AI agent that helps with software development',
+    systemPrompt: `You are an expert software developer. You can help with:
+                   - Writing and reviewing code
+                   - Debugging issues
+                   - Explaining programming concepts
+                   - Suggesting best practices
+                   
+                   Always provide clear explanations and working code examples.`,
+    tools: [
+      {
+        name: 'analyzeCode',
+        description: 'Analyze code for potential issues and improvements',
+        parameters: {
+          type: 'object',
+          properties: {
+            code: { type: 'string', description: 'Code to analyze' },
+            language: { type: 'string', description: 'Programming language' }
+          },
+          required: ['code']
+        },
+        execute: ({ code, language = 'javascript' }) => {
+          // Implement code analysis logic
+          return {
+            issues: [],
+            suggestions: [],
+            complexity: 'medium'
+          };
+        }
+      },
+      {
+        name: 'formatCode',
+        description: 'Format code according to best practices',
+        parameters: {
+          type: 'object',
+          properties: {
+            code: { type: 'string', description: 'Code to format' },
+            language: { type: 'string', description: 'Programming language' }
+          },
+          required: ['code']
+        },
+        execute: ({ code, language }) => {
+          // Implement code formatting logic
+          return code; // Placeholder
+        }
+      }
+    ],
+    chat,
+    memory
+  });
+}
+```
+
+### Research Agent
+
+```typescript
+function createResearchAgent() {
+  return new Agent({
+    name: 'Research Agent',
+    description: 'An AI agent specialized in research and information gathering',
+    systemPrompt: `You are a thorough research assistant. Your goals are to:
+                   - Find accurate and up-to-date information
+                   - Analyze and synthesize findings
+                   - Provide well-sourced conclusions
+                   - Store research for future reference`,
+    tools: [
+      {
+        name: 'searchAcademicPapers',
+        description: 'Search for academic papers on a topic',
+        execute: async ({ topic }) => {
+          // Implement academic search
+          return [];
+        }
+      },
+      {
+        name: 'summarizeFindings',
+        description: 'Summarize research findings',
+        execute: ({ findings }) => {
+          // Implement summarization
+          return 'Summary of findings';
+        }
+      }
+    ],
+    chat,
+    memory,
+    maxIterations: 20
+  });
+}
+```
+
+## Error Handling
+
+```typescript
+try {
+  const agent = new Agent({
+    name: 'Test Agent',
+    description: 'A test agent',
+    tools: [
+      {
+        name: 'faultyTool',
+        description: 'A tool that might fail',
+        execute: () => {
+          throw new Error('Tool execution failed');
+        }
+      }
+    ],
+    chat,
+    memory
+  });
+} catch (error) {
+  console.error('Failed to create agent:', error.message);
+}
+```
+
+## Best Practices
+
+### Tool Design
+
+1. **Clear descriptions**: Make tool descriptions specific and actionable
+2. **Proper parameters**: Use JSON Schema to define clear parameter requirements
+3. **Error handling**: Implement proper error handling in tool execution
+4. **Async operations**: Use async/await for tools that perform I/O operations
+
+### Agent Configuration
+
+1. **Focused purpose**: Give agents specific, well-defined roles
+2. **Appropriate limits**: Set reasonable maxIterations and timeout values
+3. **Memory integration**: Use memory for persistent state and learning
+4. **Tool selection**: Only include tools relevant to the agent's purpose
+
+## Related
+
+- [Execute Agent Tasks](/api-reference/agent/execute)
+- [Agent Tools](/api-reference/agent/tools)
+- [Memory Integration](/api-reference/memory/store)

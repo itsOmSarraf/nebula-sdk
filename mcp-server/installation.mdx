@@ -1,0 +1,192 @@
+---
+title: "Installation"
+description: "How to install and set up the MCP 0G Server"
+---
+
+# Installation
+
+## Prerequisites
+
+- Node.js 18.0 or higher
+- npm, yarn, pnpm, or bun package manager
+- Access to 0G Galileo testnet
+
+## Package Installation
+
+Clone the repository and install dependencies:
+
+```bash
+git clone https://github.com/0gfoundation/mcp-0g.git
+cd mcp-0g
+npm install
+```
+
+## Building the Server
+
+Compile the TypeScript source code:
+
+```bash
+npm run build
+```
+
+This creates the compiled JavaScript files in the `dist/` directory.
+
+## Environment Configuration
+
+Create a `.env` file in the project root:
+
+```bash
+cp .env.example .env
+```
+
+Edit the `.env` file with your configuration:
+
+```bash
+# 0G Network Configuration
+ZEROQ_RPC_URL=https://evmrpc-testnet.0g.ai
+RATE_LIMIT_REQUESTS=100
+RATE_LIMIT_WINDOW=60000
+```
+
+### Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `ZEROQ_RPC_URL` | 0G EVM RPC endpoint | `https://evmrpc-testnet.0g.ai` |
+| `RATE_LIMIT_REQUESTS` | Maximum requests per window | `100` |
+| `RATE_LIMIT_WINDOW` | Rate limit window in milliseconds | `60000` |
+
+## Running the Server
+
+### Development Mode
+
+For development with auto-reload:
+
+```bash
+npm run dev
+```
+
+### Production Mode
+
+For production deployment:
+
+```bash
+npm start
+```
+
+## Integration with Claude Desktop
+
+To use this MCP server with Claude Desktop, you need to configure it in Claude's settings.
+
+### Configuration File Locations
+
+**macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+
+**Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+
+### Configuration Setup
+
+Add the following to your `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "0g-chain": {
+      "command": "node",
+      "args": ["/path/to/your/mcp-0g/dist/index.js"],
+      "env": {}
+    }
+  }
+}
+```
+
+Replace `/path/to/your/mcp-0g` with the actual path to your project directory.
+
+### Alternative: Using npx
+
+If you prefer to use npx (after publishing to npm):
+
+```json
+{
+  "mcpServers": {
+    "0g-chain": {
+      "command": "npx",
+      "args": ["mcp-0g-server"],
+      "env": {}
+    }
+  }
+}
+```
+
+### Node.js Version Compatibility
+
+Ensure you're using Node.js v18+ for compatibility. You can create a wrapper script if needed:
+
+```bash
+#!/bin/bash
+# wrapper.sh
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+nvm use 18
+node /path/to/your/mcp-0g/dist/index.js
+```
+
+Then use the wrapper in your configuration:
+
+```json
+{
+  "mcpServers": {
+    "0g-chain": {
+      "command": "/path/to/wrapper.sh",
+      "args": [],
+      "env": {}
+    }
+  }
+}
+```
+
+## Verification
+
+After setup, restart Claude Desktop and verify the integration:
+
+1. Look for the 🔌 icon in the Claude chat interface
+2. You should see "0g-chain" in the list of available MCP servers
+3. Test the connection by asking Claude to interact with the 0G testnet
+
+### Test Commands
+
+Try these commands in Claude to verify functionality:
+
+```text
+"Get 0G chain information"
+"Check the latest block on 0G testnet"
+"Get faucet information for 0G testnet"
+```
+
+## Troubleshooting
+
+### Common Issues
+
+1. **Server not starting**: Check Node.js version and dependencies
+2. **Claude not connecting**: Verify configuration file path and syntax
+3. **Permission errors**: Ensure proper file permissions for the server executable
+
+### Debug Mode
+
+Enable debug logging by setting environment variables:
+
+```bash
+DEBUG=mcp:0g npm start
+```
+
+### Log Files
+
+Check server logs for detailed error information:
+
+```bash
+tail -f logs/mcp-server.log
+```
+
+## Next Steps
+
+Once installed, explore the [features](/mcp-server/features) and [available tools](/mcp-server/tools) to understand what you can do with the MCP 0G server.

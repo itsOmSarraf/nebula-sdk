@@ -1,0 +1,542 @@
+# OpenRouter Integration
+
+<Warning>
+**Integration Status: In Progress** - This integration is currently under development. The PR is pending merge: [OpenRouterTeam/ai-sdk-provider#191](https://github.com/OpenRouterTeam/ai-sdk-provider/pull/191)
+</Warning>
+
+## Overview
+
+OpenRouter provides a unified API for accessing multiple AI models with intelligent routing, fallback strategies, and cost optimization. The 0G integration brings decentralized compute models to the OpenRouter ecosystem.
+
+### What is OpenRouter?
+
+OpenRouter is a platform that provides:
+- **Unified API**: Single interface to access multiple AI providers and models
+- **Intelligent Routing**: Automatic model selection based on performance and cost
+- **Fallback Strategies**: Automatic failover when models are unavailable
+- **Cost Optimization**: Choose models based on price and performance requirements
+- **Usage Analytics**: Detailed insights into model usage and costs
+
+## Installation
+
+Once the integration is merged, you'll be able to install it with:
+
+```bash
+npm install @openrouter/ai-sdk-provider
+```
+
+## Supported Models
+
+| Model | Provider Address | OpenRouter Model ID | Best For |
+|-------|------------------|---------------------|----------|
+| **llama-3.3-70b-instruct** | `0xf07240Efa67755B5311bc75784a061eDB47165Dd` | `0g/llama-3.3-70b-instruct` | General conversations, content generation |
+| **deepseek-r1-70b** | `0x3feE5a4dd5FDb8a32dDA97Bed899830605dBD9D3` | `0g/deepseek-r1-70b` | Complex reasoning, analysis, problem-solving |
+
+## Basic Usage
+
+### Simple Model Access
+
+```typescript
+import { createOpenRouter } from '@openrouter/ai-sdk-provider';
+import { generateText } from 'ai';
+
+// Configure OpenRouter with 0G provider
+const openrouter = createOpenRouter({
+  apiKey: process.env.OPENROUTER_API_KEY,
+  providers: {
+    '0g': {
+      providerAddress: '0xf07240Efa67755B5311bc75784a061eDB47165Dd',
+      privateKey: process.env.ZG_PRIVATE_KEY
+    }
+  }
+});
+
+// Use 0G models through OpenRouter
+const { text } = await generateText({
+  model: openrouter('0g/llama-3.3-70b-instruct'),
+  prompt: 'Explain the advantages of decentralized AI infrastructure.'
+});
+
+console.log(text);
+```
+
+### Model Comparison
+
+```typescript
+// Compare responses from different models
+async function compareModels(prompt: string) {
+  const models = [
+    '0g/llama-3.3-70b-instruct',
+    '0g/deepseek-r1-70b',
+    'openai/llama-3.3-70b-instruct',
+    'anthropic/claude-3-sonnet'
+  ];
+
+  const results = await Promise.all(
+    models.map(async (modelId) => {
+      const { text } = await generateText({
+        model: openrouter(modelId),
+        prompt
+      });
+      return { model: modelId, response: text };
+    })
+  );
+
+  return results;
+}
+
+const comparison = await compareModels('Explain quantum computing');
+comparison.forEach(result => {
+  console.log(`${result.model}:`, result.response.substring(0, 100) + '...');
+});
+```
+
+## Advanced Features
+
+### Intelligent Routing
+
+Route requests to the best available model based on your criteria:
+
+```typescript
+// Route between different 0G models based on task complexity
+const routeModel = (taskComplexity: 'simple' | 'complex', fallback = true) => {
+  const primaryModel = taskComplexity === 'complex' 
+    ? '0g/deepseek-r1-70b'      // Complex reasoning
+    : '0g/llama-3.3-70b-instruct'; // General tasks
+
+  if (fallback) {
+    return {
+      model: openrouter(primaryModel),
+      fallbacks: [
+        openrouter('openai/llama-3.3-70b-instruct'),
+        openrouter('anthropic/claude-3-sonnet')
+      ]
+    };
+  }
+
+  return { model: openrouter(primaryModel) };
+};
+
+// Simple task with fallback
+const simpleResult = await generateText({
+  ...routeModel('simple'),
+  prompt: 'Write a brief summary of renewable energy.'
+});
+
+// Complex task with fallback
+const complexResult = await generateText({
+  ...routeModel('complex'),
+  prompt: 'Analyze the economic implications of transitioning to renewable energy, considering supply chain, job market, and policy factors.'
+});
+```
+
+### Cost Optimization
+
+```typescript
+// Choose models based on cost and performance requirements
+const costOptimizedRouting = (budget: 'low' | 'medium' | 'high') => {
+  const modelTiers = {
+    low: ['0g/llama-3.3-70b-instruct'], // Most cost-effective
+    medium: ['0g/deepseek-r1-70b', '0g/llama-3.3-70b-instruct'],
+    high: ['0g/deepseek-r1-70b', 'openai/llama-3.3-70b-instruct', 'anthropic/claude-3-sonnet']
+  };
+
+  return modelTiers[budget];
+};
+
+// Generate content within budget constraints
+async function generateWithBudget(prompt: string, budget: 'low' | 'medium' | 'high') {
+  const availableModels = costOptimizedRouting(budget);
+  
+  for (const modelId of availableModels) {
+    try {
+      const { text } = await generateText({
+        model: openrouter(modelId),
+        prompt
+      });
+      return { text, modelUsed: modelId };
+    } catch (error) {
+      console.log(`Model ${modelId} failed, trying next...`);
+      continue;
+    }
+  }
+  
+  throw new Error('All models failed');
+}
+```
+
+### Usage Analytics
+
+```typescript
+// Track usage and costs across different models
+class ModelAnalytics {
+  private usage: Map<string, { calls: number, tokens: number, cost: number }> = new Map();
+
+  async trackGeneration(modelId: string, prompt: string) {
+    const startTime = Date.now();
+    
+    try {
+      const { text, usage } = await generateText({
+        model: openrouter(modelId),
+        prompt
+      });
+
+      // Update usage statistics
+      const current = this.usage.get(modelId) || { calls: 0, tokens: 0, cost: 0 };
+      this.usage.set(modelId, {
+        calls: current.calls + 1,
+        tokens: current.tokens + (usage?.totalTokens || 0),
+        cost: current.cost + this.calculateCost(modelId, usage?.totalTokens || 0)
+      });
+
+      return { text, executionTime: Date.now() - startTime };
+    } catch (error) {
+      console.error(`Model ${modelId} failed:`, error);
+      throw error;
+    }
+  }
+
+  private calculateCost(modelId: string, tokens: number): number {
+    // Cost calculation based on model pricing
+    const pricing = {
+      '0g/llama-3.3-70b-instruct': 0.0001, // Example pricing per token
+      '0g/deepseek-r1-70b': 0.0002,
+      'openai/llama-3.3-70b-instruct': 0.03,
+      'anthropic/claude-3-sonnet': 0.015
+    };
+
+    return (pricing[modelId] || 0) * tokens;
+  }
+
+  getAnalytics() {
+    return Object.fromEntries(this.usage);
+  }
+}
+
+const analytics = new ModelAnalytics();
+
+// Use with tracking
+const result = await analytics.trackGeneration(
+  '0g/llama-3.3-70b-instruct',
+  'Explain blockchain technology'
+);
+
+console.log('Analytics:', analytics.getAnalytics());
+```
+
+## Streaming and Real-time
+
+### Streaming with Fallbacks
+
+```typescript
+import { streamText } from 'ai';
+
+async function streamWithFallback(prompt: string) {
+  const models = [
+    '0g/llama-3.3-70b-instruct',
+    'openai/gpt-3.5-turbo',
+    'anthropic/claude-3-haiku'
+  ];
+
+  for (const modelId of models) {
+    try {
+      const { textStream } = await streamText({
+        model: openrouter(modelId),
+        prompt
+      });
+
+      console.log(`Using model: ${modelId}`);
+      
+      for await (const textPart of textStream) {
+        process.stdout.write(textPart);
+      }
+      
+      return; // Success, exit loop
+    } catch (error) {
+      console.log(`Model ${modelId} failed, trying fallback...`);
+      continue;
+    }
+  }
+  
+  throw new Error('All models failed');
+}
+```
+
+### Real-time Model Switching
+
+```typescript
+// Switch models based on real-time performance
+class AdaptiveRouter {
+  private modelPerformance: Map<string, { avgResponseTime: number, errorRate: number }> = new Map();
+
+  async generateWithAdaptiveRouting(prompt: string) {
+    const availableModels = [
+      '0g/llama-3.3-70b-instruct',
+      '0g/deepseek-r1-70b'
+    ];
+
+    // Sort models by performance
+    const sortedModels = availableModels.sort((a, b) => {
+      const perfA = this.modelPerformance.get(a) || { avgResponseTime: Infinity, errorRate: 1 };
+      const perfB = this.modelPerformance.get(b) || { avgResponseTime: Infinity, errorRate: 1 };
+      
+      // Prefer lower response time and error rate
+      return (perfA.avgResponseTime * (1 + perfA.errorRate)) - 
+             (perfB.avgResponseTime * (1 + perfB.errorRate));
+    });
+
+    for (const modelId of sortedModels) {
+      const startTime = Date.now();
+      
+      try {
+        const { text } = await generateText({
+          model: openrouter(modelId),
+          prompt
+        });
+
+        // Update performance metrics
+        this.updatePerformance(modelId, Date.now() - startTime, false);
+        
+        return { text, modelUsed: modelId };
+      } catch (error) {
+        this.updatePerformance(modelId, Date.now() - startTime, true);
+        continue;
+      }
+    }
+    
+    throw new Error('All models failed');
+  }
+
+  private updatePerformance(modelId: string, responseTime: number, isError: boolean) {
+    const current = this.modelPerformance.get(modelId) || { avgResponseTime: 0, errorRate: 0 };
+    
+    // Simple moving average
+    this.modelPerformance.set(modelId, {
+      avgResponseTime: (current.avgResponseTime + responseTime) / 2,
+      errorRate: isError ? Math.min(current.errorRate + 0.1, 1) : Math.max(current.errorRate - 0.05, 0)
+    });
+  }
+}
+```
+
+## Configuration Options
+
+### Provider Configuration
+
+```typescript
+const openrouter = createOpenRouter({
+  apiKey: process.env.OPENROUTER_API_KEY,
+  baseURL: 'https://openrouter.ai/api/v1',
+  providers: {
+    '0g': {
+      providerAddress: '0xf07240Efa67755B5311bc75784a061eDB47165Dd',
+      privateKey: process.env.ZG_PRIVATE_KEY,
+      rpcUrl: 'https://custom-rpc.0g.ai',
+      timeout: 60000
+    }
+  },
+  defaultHeaders: {
+    'HTTP-Referer': 'https://your-app.com',
+    'X-Title': 'Your App Name'
+  }
+});
+```
+
+### Model-Specific Settings
+
+```typescript
+// Configure different settings for different models
+const modelConfigs = {
+  '0g/llama-3.3-70b-instruct': {
+    temperature: 0.7,
+    maxTokens: 2000,
+    topP: 0.9
+  },
+  '0g/deepseek-r1-70b': {
+    temperature: 0.1,
+    maxTokens: 3000,
+    topP: 0.95
+  }
+};
+
+async function generateWithConfig(modelId: string, prompt: string) {
+  const config = modelConfigs[modelId] || {};
+  
+  return await generateText({
+    model: openrouter(modelId),
+    prompt,
+    ...config
+  });
+}
+```
+
+## Integration Patterns
+
+### Multi-Provider Setup
+
+```typescript
+// Use multiple providers with OpenRouter
+const multiProviderRouter = createOpenRouter({
+  apiKey: process.env.OPENROUTER_API_KEY,
+  providers: {
+    '0g': {
+      providerAddress: '0xf07240Efa67755B5311bc75784a061eDB47165Dd',
+      privateKey: process.env.ZG_PRIVATE_KEY
+    },
+    'openai': {
+      apiKey: process.env.OPENAI_API_KEY
+    },
+    'anthropic': {
+      apiKey: process.env.ANTHROPIC_API_KEY
+    }
+  }
+});
+
+// Route based on requirements
+async function smartRoute(prompt: string, requirements: {
+  speed?: 'fast' | 'balanced' | 'quality';
+  cost?: 'low' | 'medium' | 'high';
+  privacy?: boolean;
+}) {
+  let modelId: string;
+
+  if (requirements.privacy) {
+    // Use decentralized 0G models for privacy
+    modelId = requirements.speed === 'quality' 
+      ? '0g/deepseek-r1-70b' 
+      : '0g/llama-3.3-70b-instruct';
+  } else if (requirements.cost === 'low') {
+    modelId = '0g/llama-3.3-70b-instruct';
+  } else if (requirements.speed === 'fast') {
+    modelId = 'openai/gpt-3.5-turbo';
+  } else {
+    modelId = 'openai/llama-3.3-70b-instruct';
+  }
+
+  return await generateText({
+    model: multiProviderRouter(modelId),
+    prompt
+  });
+}
+```
+
+### Load Balancing
+
+```typescript
+// Distribute load across multiple 0G provider addresses
+class LoadBalancer {
+  private providers: string[] = [
+    '0xf07240Efa67755B5311bc75784a061eDB47165Dd',
+    '0x3feE5a4dd5FDb8a32dDA97Bed899830605dBD9D3'
+  ];
+  private currentIndex = 0;
+
+  getNextProvider(): string {
+    const provider = this.providers[this.currentIndex];
+    this.currentIndex = (this.currentIndex + 1) % this.providers.length;
+    return provider;
+  }
+
+  async generateWithLoadBalancing(prompt: string) {
+    const providerAddress = this.getNextProvider();
+    
+    const router = createOpenRouter({
+      apiKey: process.env.OPENROUTER_API_KEY,
+      providers: {
+        '0g': {
+          providerAddress,
+          privateKey: process.env.ZG_PRIVATE_KEY
+        }
+      }
+    });
+
+    return await generateText({
+      model: router('0g/llama-3.3-70b-instruct'),
+      prompt
+    });
+  }
+}
+```
+
+## Benefits of 0G + OpenRouter
+
+<CardGroup cols={2}>
+  <Card
+    title="Unified Interface"
+    icon="layer-group"
+  >
+    Access 0G models alongside other providers through a single API
+  </Card>
+  <Card
+    title="Intelligent Routing"
+    icon="route"
+  >
+    Automatic model selection and fallback strategies
+  </Card>
+  <Card
+    title="Cost Optimization"
+    icon="dollar-sign"
+  >
+    Choose the most cost-effective models for your use case
+  </Card>
+  <Card
+    title="Privacy Options"
+    icon="shield"
+  >
+    Use decentralized 0G models when privacy is a concern
+  </Card>
+</CardGroup>
+
+## Migration from Direct APIs
+
+<CodeGroup>
+
+```typescript Before (Direct OpenAI)
+import OpenAI from 'openai';
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY
+});
+
+const completion = await openai.chat.completions.create({
+  model: 'llama-3.3-70b-instruct',
+  messages: [{ role: 'user', content: 'Hello!' }]
+});
+```
+
+```typescript After (OpenRouter + 0G)
+import { createOpenRouter } from '@openrouter/ai-sdk-provider';
+import { generateText } from 'ai';
+
+const openrouter = createOpenRouter({
+  apiKey: process.env.OPENROUTER_API_KEY,
+  providers: {
+    '0g': {
+      providerAddress: '0xf07240Efa67755B5311bc75784a061eDB47165Dd',
+      privateKey: process.env.ZG_PRIVATE_KEY
+    }
+  }
+});
+
+const { text } = await generateText({
+  model: openrouter('0g/llama-3.3-70b-instruct'),
+  messages: [{ role: 'user', content: 'Hello!' }]
+});
+```
+
+</CodeGroup>
+
+## Getting Started
+
+1. **Wait for the integration to be merged** - Track progress at [OpenRouterTeam/ai-sdk-provider#191](https://github.com/OpenRouterTeam/ai-sdk-provider/pull/191)
+2. **Sign up for OpenRouter** at [openrouter.ai](https://openrouter.ai)
+3. **Install the package** once available: `npm install @openrouter/ai-sdk-provider`
+4. **Configure your providers** including 0G credentials
+5. **Start routing** between different AI models!
+
+## Community & Support
+
+- **GitHub**: [OpenRouterTeam/ai-sdk-provider](https://github.com/OpenRouterTeam/ai-sdk-provider)
+- **OpenRouter Docs**: [openrouter.ai/docs](https://openrouter.ai/docs)
+- **Discord**: OpenRouter community for integration support
+- **0G Discord**: Join for 0G-specific integration help

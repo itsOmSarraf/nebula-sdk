@@ -1,0 +1,788 @@
+# Agent Tools
+
+Create and manage custom tools for AI agents to extend their capabilities.
+
+## Tool Interface
+
+```typescript
+interface AgentTool {
+  name: string;
+  description: string;
+  parameters?: JSONSchema;
+  execute: (params?: any) => Promise<any> | any;
+}
+```
+
+### Properties
+
+<ParamField path="name" type="string" required>
+  Unique identifier for the tool
+</ParamField>
+
+<ParamField path="description" type="string" required>
+  Clear description of what the tool does (used by AI to decide when to use it)
+</ParamField>
+
+<ParamField path="parameters" type="JSONSchema">
+  JSON Schema defining the expected parameters
+</ParamField>
+
+<ParamField path="execute" type="function" required>
+  Function that performs the tool's operation
+</ParamField>
+
+## Built-in Tool Categories
+
+### System Tools
+
+<CodeGroup>
+
+```typescript Time and Date Tools
+const timeTools = [
+  {
+    name: 'getCurrentTime',
+    description: 'Get the current date and time',
+    execute: () => new Date().toISOString()
+  },
+  {
+    name: 'formatDate',
+    description: 'Format a date string in a specific format',
+    parameters: {
+      type: 'object',
+      properties: {
+        date: { type: 'string', description: 'Date to format (ISO string)' },
+        format: { type: 'string', description: 'Format pattern', default: 'YYYY-MM-DD' }
+      },
+      required: ['date']
+    },
+    execute: ({ date, format = 'YYYY-MM-DD' }) => {
+      const d = new Date(date);
+      // Implement date formatting logic
+      return d.toLocaleDateString();
+    }
+  },
+  {
+    name: 'calculateTimeDifference',
+    description: 'Calculate the difference between two dates',
+    parameters: {
+      type: 'object',
+      properties: {
+        startDate: { type: 'string', description: 'Start date (ISO string)' },
+        endDate: { type: 'string', description: 'End date (ISO string)' },
+        unit: { type: 'string', enum: ['days', 'hours', 'minutes'], default: 'days' }
+      },
+      required: ['startDate', 'endDate']
+    },
+    execute: ({ startDate, endDate, unit = 'days' }) => {
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      const diff = end.getTime() - start.getTime();
+      
+      switch (unit) {
+        case 'days': return Math.floor(diff / (1000 * 60 * 60 * 24));
+        case 'hours': return Math.floor(diff / (1000 * 60 * 60));
+        case 'minutes': return Math.floor(diff / (1000 * 60));
+        default: return diff;
+      }
+    }
+  }
+];
+```
+
+```typescript Math and Calculation Tools
+const mathTools = [
+  {
+    name: 'calculate',
+    description: 'Perform basic mathematical calculations',
+    parameters: {
+      type: 'object',
+      properties: {
+        expression: { type: 'string', description: 'Mathematical expression to evaluate' }
+      },
+      required: ['expression']
+    },
+    execute: ({ expression }) => {
+      // Safe evaluation of mathematical expressions
+      try {
+        // Use a safe math evaluator library in production
+        return eval(expression);
+      } catch (error) {
+        throw new Error(`Invalid mathematical expression: ${expression}`);
+      }
+    }
+  },
+  {
+    name: 'generateRandomNumber',
+    description: 'Generate a random number within a range',
+    parameters: {
+      type: 'object',
+      properties: {
+        min: { type: 'number', description: 'Minimum value', default: 0 },
+        max: { type: 'number', description: 'Maximum value', default: 100 },
+        integer: { type: 'boolean', description: 'Return integer only', default: true }
+      }
+    },
+    execute: ({ min = 0, max = 100, integer = true }) => {
+      const random = Math.random() * (max - min) + min;
+      return integer ? Math.floor(random) : random;
+    }
+  }
+];
+```
+
+```typescript String Processing Tools
+const stringTools = [
+  {
+    name: 'processText',
+    description: 'Process text with various operations',
+    parameters: {
+      type: 'object',
+      properties: {
+        text: { type: 'string', description: 'Text to process' },
+        operation: { 
+          type: 'string', 
+          enum: ['uppercase', 'lowercase', 'capitalize', 'reverse', 'wordCount'],
+          description: 'Operation to perform'
+        }
+      },
+      required: ['text', 'operation']
+    },
+    execute: ({ text, operation }) => {
+      switch (operation) {
+        case 'uppercase': return text.toUpperCase();
+        case 'lowercase': return text.toLowerCase();
+        case 'capitalize': return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
+        case 'reverse': return text.split('').reverse().join('');
+        case 'wordCount': return text.split(/\s+/).filter(word => word.length > 0).length;
+        default: throw new Error(`Unknown operation: ${operation}`);
+      }
+    }
+  },
+  {
+    name: 'extractEmails',
+    description: 'Extract email addresses from text',
+    parameters: {
+      type: 'object',
+      properties: {
+        text: { type: 'string', description: 'Text to search for emails' }
+      },
+      required: ['text']
+    },
+    execute: ({ text }) => {
+      const emailRegex = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g;
+      return text.match(emailRegex) || [];
+    }
+  }
+];
+```
+
+</CodeGroup>
+
+### File System Tools
+
+<CodeGroup>
+
+```typescript File Operations
+const fileTools = [
+  {
+    name: 'readFile',
+    description: 'Read the contents of a file',
+    parameters: {
+      type: 'object',
+      properties: {
+        path: { type: 'string', description: 'File path to read' },
+        encoding: { type: 'string', description: 'File encoding', default: 'utf8' }
+      },
+      required: ['path']
+    },
+    execute: async ({ path, encoding = 'utf8' }) => {
+      const fs = require('fs').promises;
+      try {
+        return await fs.readFile(path, encoding);
+      } catch (error) {
+        throw new Error(`Failed to read file ${path}: ${error.message}`);
+      }
+    }
+  },
+  {
+    name: 'writeFile',
+    description: 'Write content to a file',
+    parameters: {
+      type: 'object',
+      properties: {
+        path: { type: 'string', description: 'File path to write' },
+        content: { type: 'string', description: 'Content to write' },
+        encoding: { type: 'string', description: 'File encoding', default: 'utf8' }
+      },
+      required: ['path', 'content']
+    },
+    execute: async ({ path, content, encoding = 'utf8' }) => {
+      const fs = require('fs').promises;
+      try {
+        await fs.writeFile(path, content, encoding);
+        return `Successfully wrote ${content.length} characters to ${path}`;
+      } catch (error) {
+        throw new Error(`Failed to write file ${path}: ${error.message}`);
+      }
+    }
+  },
+  {
+    name: 'listDirectory',
+    description: 'List files and directories in a path',
+    parameters: {
+      type: 'object',
+      properties: {
+        path: { type: 'string', description: 'Directory path to list', default: '.' },
+        includeHidden: { type: 'boolean', description: 'Include hidden files', default: false }
+      }
+    },
+    execute: async ({ path = '.', includeHidden = false }) => {
+      const fs = require('fs').promises;
+      try {
+        const items = await fs.readdir(path, { withFileTypes: true });
+        return items
+          .filter(item => includeHidden || !item.name.startsWith('.'))
+          .map(item => ({
+            name: item.name,
+            type: item.isDirectory() ? 'directory' : 'file',
+            path: `${path}/${item.name}`
+          }));
+      } catch (error) {
+        throw new Error(`Failed to list directory ${path}: ${error.message}`);
+      }
+    }
+  }
+];
+```
+
+```typescript File Analysis
+const fileAnalysisTools = [
+  {
+    name: 'getFileInfo',
+    description: 'Get information about a file',
+    parameters: {
+      type: 'object',
+      properties: {
+        path: { type: 'string', description: 'File path to analyze' }
+      },
+      required: ['path']
+    },
+    execute: async ({ path }) => {
+      const fs = require('fs').promises;
+      const pathModule = require('path');
+      
+      try {
+        const stats = await fs.stat(path);
+        return {
+          name: pathModule.basename(path),
+          size: stats.size,
+          created: stats.birthtime,
+          modified: stats.mtime,
+          isDirectory: stats.isDirectory(),
+          isFile: stats.isFile(),
+          extension: pathModule.extname(path)
+        };
+      } catch (error) {
+        throw new Error(`Failed to get file info for ${path}: ${error.message}`);
+      }
+    }
+  },
+  {
+    name: 'searchInFiles',
+    description: 'Search for text within files in a directory',
+    parameters: {
+      type: 'object',
+      properties: {
+        directory: { type: 'string', description: 'Directory to search in' },
+        pattern: { type: 'string', description: 'Text pattern to search for' },
+        fileExtensions: { type: 'array', items: { type: 'string' }, description: 'File extensions to include' }
+      },
+      required: ['directory', 'pattern']
+    },
+    execute: async ({ directory, pattern, fileExtensions = ['.txt', '.js', '.ts', '.md'] }) => {
+      const fs = require('fs').promises;
+      const path = require('path');
+      
+      const results = [];
+      
+      async function searchDirectory(dir) {
+        const items = await fs.readdir(dir, { withFileTypes: true });
+        
+        for (const item of items) {
+          const fullPath = path.join(dir, item.name);
+          
+          if (item.isDirectory()) {
+            await searchDirectory(fullPath);
+          } else if (item.isFile()) {
+            const ext = path.extname(item.name);
+            if (fileExtensions.includes(ext)) {
+              try {
+                const content = await fs.readFile(fullPath, 'utf8');
+                if (content.includes(pattern)) {
+                  const lines = content.split('\n');
+                  const matches = lines
+                    .map((line, index) => ({ line: index + 1, content: line }))
+                    .filter(({ content }) => content.includes(pattern));
+                  
+                  results.push({
+                    file: fullPath,
+                    matches: matches.length,
+                    lines: matches
+                  });
+                }
+              } catch (error) {
+                // Skip files that can't be read
+              }
+            }
+          }
+        }
+      }
+      
+      await searchDirectory(directory);
+      return results;
+    }
+  }
+];
+```
+
+</CodeGroup>
+
+### Web and API Tools
+
+<CodeGroup>
+
+```typescript HTTP Tools
+const httpTools = [
+  {
+    name: 'httpRequest',
+    description: 'Make an HTTP request to an API or website',
+    parameters: {
+      type: 'object',
+      properties: {
+        url: { type: 'string', description: 'URL to request' },
+        method: { type: 'string', enum: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'], default: 'GET' },
+        headers: { type: 'object', description: 'Request headers' },
+        body: { type: 'string', description: 'Request body (JSON string)' },
+        timeout: { type: 'number', description: 'Request timeout in ms', default: 10000 }
+      },
+      required: ['url']
+    },
+    execute: async ({ url, method = 'GET', headers = {}, body, timeout = 10000 }) => {
+      const fetch = require('node-fetch');
+      
+      const options = {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          ...headers
+        },
+        timeout
+      };
+      
+      if (body && ['POST', 'PUT', 'PATCH'].includes(method)) {
+        options.body = typeof body === 'string' ? body : JSON.stringify(body);
+      }
+      
+      try {
+        const response = await fetch(url, options);
+        const data = await response.json();
+        
+        return {
+          status: response.status,
+          statusText: response.statusText,
+          headers: Object.fromEntries(response.headers.entries()),
+          data
+        };
+      } catch (error) {
+        throw new Error(`HTTP request failed: ${error.message}`);
+      }
+    }
+  },
+  {
+    name: 'downloadFile',
+    description: 'Download a file from a URL',
+    parameters: {
+      type: 'object',
+      properties: {
+        url: { type: 'string', description: 'URL of the file to download' },
+        outputPath: { type: 'string', description: 'Local path to save the file' }
+      },
+      required: ['url', 'outputPath']
+    },
+    execute: async ({ url, outputPath }) => {
+      const fetch = require('node-fetch');
+      const fs = require('fs');
+      
+      try {
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const fileStream = fs.createWriteStream(outputPath);
+        response.body.pipe(fileStream);
+        
+        return new Promise((resolve, reject) => {
+          fileStream.on('finish', () => {
+            resolve(`File downloaded successfully to ${outputPath}`);
+          });
+          fileStream.on('error', reject);
+        });
+      } catch (error) {
+        throw new Error(`Download failed: ${error.message}`);
+      }
+    }
+  }
+];
+```
+
+```typescript Web Scraping Tools
+const webScrapingTools = [
+  {
+    name: 'extractTextFromWebpage',
+    description: 'Extract text content from a webpage',
+    parameters: {
+      type: 'object',
+      properties: {
+        url: { type: 'string', description: 'URL of the webpage' },
+        selector: { type: 'string', description: 'CSS selector to target specific elements' }
+      },
+      required: ['url']
+    },
+    execute: async ({ url, selector }) => {
+      // Note: This requires additional dependencies like cheerio and puppeteer
+      const fetch = require('node-fetch');
+      
+      try {
+        const response = await fetch(url);
+        const html = await response.text();
+        
+        if (selector) {
+          // Use cheerio for CSS selector parsing
+          const cheerio = require('cheerio');
+          const $ = cheerio.load(html);
+          return $(selector).text();
+        } else {
+          // Extract plain text (basic implementation)
+          return html.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+        }
+      } catch (error) {
+        throw new Error(`Failed to extract text from ${url}: ${error.message}`);
+      }
+    }
+  }
+];
+```
+
+</CodeGroup>
+
+### Data Processing Tools
+
+<CodeGroup>
+
+```typescript JSON Tools
+const jsonTools = [
+  {
+    name: 'parseJSON',
+    description: 'Parse a JSON string and extract data',
+    parameters: {
+      type: 'object',
+      properties: {
+        jsonString: { type: 'string', description: 'JSON string to parse' },
+        path: { type: 'string', description: 'JSONPath to extract specific data' }
+      },
+      required: ['jsonString']
+    },
+    execute: ({ jsonString, path }) => {
+      try {
+        const data = JSON.parse(jsonString);
+        
+        if (path) {
+          // Simple path extraction (implement JSONPath library for complex paths)
+          const pathParts = path.split('.');
+          let result = data;
+          for (const part of pathParts) {
+            result = result[part];
+            if (result === undefined) break;
+          }
+          return result;
+        }
+        
+        return data;
+      } catch (error) {
+        throw new Error(`Failed to parse JSON: ${error.message}`);
+      }
+    }
+  },
+  {
+    name: 'validateJSON',
+    description: 'Validate JSON against a schema',
+    parameters: {
+      type: 'object',
+      properties: {
+        jsonString: { type: 'string', description: 'JSON string to validate' },
+        schema: { type: 'object', description: 'JSON Schema to validate against' }
+      },
+      required: ['jsonString', 'schema']
+    },
+    execute: ({ jsonString, schema }) => {
+      try {
+        const data = JSON.parse(jsonString);
+        // Implement JSON schema validation
+        // This is a simplified version - use ajv library for full validation
+        return { valid: true, data };
+      } catch (error) {
+        return { valid: false, error: error.message };
+      }
+    }
+  }
+];
+```
+
+```typescript CSV Tools
+const csvTools = [
+  {
+    name: 'parseCSV',
+    description: 'Parse CSV data into structured format',
+    parameters: {
+      type: 'object',
+      properties: {
+        csvData: { type: 'string', description: 'CSV data to parse' },
+        delimiter: { type: 'string', description: 'CSV delimiter', default: ',' },
+        hasHeader: { type: 'boolean', description: 'Whether first row is header', default: true }
+      },
+      required: ['csvData']
+    },
+    execute: ({ csvData, delimiter = ',', hasHeader = true }) => {
+      const lines = csvData.trim().split('\n');
+      const result = [];
+      
+      let headers = null;
+      if (hasHeader && lines.length > 0) {
+        headers = lines[0].split(delimiter).map(h => h.trim());
+        lines.shift();
+      }
+      
+      for (const line of lines) {
+        const values = line.split(delimiter).map(v => v.trim());
+        
+        if (headers) {
+          const row = {};
+          headers.forEach((header, index) => {
+            row[header] = values[index] || '';
+          });
+          result.push(row);
+        } else {
+          result.push(values);
+        }
+      }
+      
+      return { data: result, headers };
+    }
+  }
+];
+```
+
+</CodeGroup>
+
+## Custom Tool Development
+
+### Tool Template
+
+```typescript
+function createCustomTool(name: string, description: string, implementation: Function) {
+  return {
+    name,
+    description,
+    parameters: {
+      type: 'object',
+      properties: {
+        // Define your parameters here
+      },
+      required: []
+    },
+    execute: async (params) => {
+      try {
+        return await implementation(params);
+      } catch (error) {
+        throw new Error(`Tool ${name} failed: ${error.message}`);
+      }
+    }
+  };
+}
+
+// Example usage
+const customTool = createCustomTool(
+  'processUserData',
+  'Process user data according to business rules',
+  async ({ userData, rules }) => {
+    // Implementation here
+    return processedData;
+  }
+);
+```
+
+### Tool Validation
+
+```typescript
+function validateTool(tool: AgentTool): boolean {
+  if (!tool.name || typeof tool.name !== 'string') {
+    throw new Error('Tool must have a valid name');
+  }
+  
+  if (!tool.description || typeof tool.description !== 'string') {
+    throw new Error('Tool must have a description');
+  }
+  
+  if (typeof tool.execute !== 'function') {
+    throw new Error('Tool must have an execute function');
+  }
+  
+  // Validate parameters schema if provided
+  if (tool.parameters) {
+    // Add JSON Schema validation here
+  }
+  
+  return true;
+}
+```
+
+### Tool Registry
+
+```typescript
+class ToolRegistry {
+  private tools = new Map<string, AgentTool>();
+  
+  register(tool: AgentTool) {
+    validateTool(tool);
+    
+    if (this.tools.has(tool.name)) {
+      throw new Error(`Tool ${tool.name} already registered`);
+    }
+    
+    this.tools.set(tool.name, tool);
+  }
+  
+  get(name: string): AgentTool | undefined {
+    return this.tools.get(name);
+  }
+  
+  getAll(): AgentTool[] {
+    return Array.from(this.tools.values());
+  }
+  
+  getByCategory(category: string): AgentTool[] {
+    return this.getAll().filter(tool => 
+      tool.description.toLowerCase().includes(category.toLowerCase())
+    );
+  }
+}
+
+// Usage
+const registry = new ToolRegistry();
+registry.register(timeTools[0]);
+registry.register(mathTools[0]);
+
+const agent = new Agent({
+  name: 'Multi-Tool Agent',
+  description: 'Agent with registered tools',
+  tools: registry.getAll(),
+  chat,
+  memory
+});
+```
+
+## Tool Security
+
+### Safe Execution
+
+```typescript
+function createSecureTool(tool: AgentTool): AgentTool {
+  return {
+    ...tool,
+    execute: async (params) => {
+      // Input validation
+      if (tool.parameters) {
+        validateParameters(params, tool.parameters);
+      }
+      
+      // Rate limiting
+      await checkRateLimit(tool.name);
+      
+      // Execution with timeout
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Tool execution timeout')), 30000);
+      });
+      
+      try {
+        const result = await Promise.race([
+          tool.execute(params),
+          timeoutPromise
+        ]);
+        
+        // Log execution
+        console.log(`Tool ${tool.name} executed successfully`);
+        
+        return result;
+      } catch (error) {
+        console.error(`Tool ${tool.name} failed:`, error.message);
+        throw error;
+      }
+    }
+  };
+}
+```
+
+### Parameter Sanitization
+
+```typescript
+function sanitizeParameters(params: any, schema: any): any {
+  // Implement parameter sanitization based on schema
+  const sanitized = { ...params };
+  
+  // Remove dangerous properties
+  delete sanitized.__proto__;
+  delete sanitized.constructor;
+  
+  // Type coercion and validation
+  if (schema.properties) {
+    for (const [key, propSchema] of Object.entries(schema.properties)) {
+      if (sanitized[key] !== undefined) {
+        sanitized[key] = coerceType(sanitized[key], propSchema.type);
+      }
+    }
+  }
+  
+  return sanitized;
+}
+```
+
+## Best Practices
+
+### Tool Design
+
+1. **Single Responsibility**: Each tool should have one clear purpose
+2. **Clear Descriptions**: Write descriptions that help the AI understand when to use the tool
+3. **Proper Parameters**: Use JSON Schema to define clear parameter requirements
+4. **Error Handling**: Implement comprehensive error handling
+5. **Async Support**: Use async/await for I/O operations
+
+### Performance
+
+1. **Caching**: Cache expensive operations when possible
+2. **Timeouts**: Set appropriate timeouts for long-running operations
+3. **Resource Management**: Clean up resources properly
+4. **Batch Operations**: Support batch processing when applicable
+
+### Security
+
+1. **Input Validation**: Always validate and sanitize inputs
+2. **Rate Limiting**: Implement rate limiting for resource-intensive tools
+3. **Access Control**: Restrict access to sensitive operations
+4. **Audit Logging**: Log tool usage for security monitoring
+
+## Related
+
+- [Create Agent](/api-reference/agent/create)
+- [Execute Agent](/api-reference/agent/execute)
+- [Memory Integration](/api-reference/memory/store)

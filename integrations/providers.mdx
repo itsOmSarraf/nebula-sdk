@@ -1,0 +1,670 @@
+# Framework Integrations
+
+The 0G AI SDK integrates seamlessly with popular AI frameworks and libraries, bringing decentralized compute to your existing workflows.
+
+## Available Providers
+
+Choose your preferred AI framework to get started with 0G decentralized compute. Click on any provider to view the integration progress:
+
+<CardGroup cols={2}>
+  <Card
+    title="LangChain"
+    icon="link"
+    href="https://github.com/langchain-ai/langchain/pull/33136"
+  >
+    The most popular framework for building LLM applications with chains, agents, and memory
+    
+    **Status**: 🔄 In Progress - [View PR](https://github.com/langchain-ai/langchain/pull/33136)
+  </Card>
+  <Card
+    title="Vercel AI SDK"
+    icon="triangle"
+    href="https://github.com/vercel/ai/pull/8976"
+  >
+    React-first AI SDK for building conversational UIs with streaming and type safety
+    
+    **Status**: 🔄 In Progress - [View PR](https://github.com/vercel/ai/pull/8976)
+  </Card>
+  <Card
+    title="OpenRouter"
+    icon="route"
+    href="https://github.com/OpenRouterTeam/ai-sdk-provider/pull/191"
+  >
+    Unified API for accessing multiple AI models with intelligent routing and fallbacks
+    
+    **Status**: 🔄 In Progress - [View PR](https://github.com/OpenRouterTeam/ai-sdk-provider/pull/191)
+  </Card>
+  <Card
+    title="LlamaIndex"
+    icon="database"
+    href="https://github.com/run-llama/llama_index/pull/19968"
+  >
+    Data framework for building RAG applications with advanced document processing
+    
+    **Status**: 🔄 In Progress - [View PR](https://github.com/run-llama/llama_index/pull/19968)
+  </Card>
+</CardGroup>
+
+## Integration Status
+
+All integrations are currently under active development. Each provider card above links directly to the GitHub pull request where you can:
+
+- 📋 **Track Progress**: See the current status of the integration
+- 💬 **Join Discussion**: Participate in technical discussions
+- 🔍 **Review Code**: Examine the implementation details
+- 📝 **Provide Feedback**: Share your thoughts and suggestions
+
+<Note>
+Want to see detailed documentation and examples? Visit our individual provider pages: [LangChain](/providers/langchain), [Vercel AI SDK](/providers/vercel-ai-sdk), [OpenRouter](/providers/openrouter), and [LlamaIndex](/providers/llamaindex).
+</Note>
+
+
+### Supported Models
+
+| Model | Provider Address | Best For | Framework Support |
+|-------|------------------|----------|-------------------|
+| **llama-3.3-70b-instruct** | `0xf07240Efa67755B5311bc75784a061eDB47165Dd` | General AI tasks, conversations, content generation | All frameworks |
+| **deepseek-r1-70b** | `0x3feE5a4dd5FDb8a32dDA97Bed899830605dBD9D3` | Complex reasoning, analysis, code generation | All frameworks |
+
+## LangChain Integration
+
+<Card
+  title="LangChain 0G Provider"
+  icon="link"
+  href="https://github.com/langchain-ai/langchain/pull/33136"
+>
+  Official LangChain integration for 0G decentralized compute
+</Card>
+
+### Installation
+
+```bash
+pip install langchain-0g
+```
+
+### Basic Usage
+
+```python
+from langchain_0g import ZGChat
+from langchain.schema import HumanMessage, SystemMessage
+
+# Initialize with 0G provider
+llm = ZGChat(
+    provider_address="0xf07240Efa67755B5311bc75784a061eDB47165Dd",  # llama-3.3-70b-instruct
+    private_key="your-private-key",
+    temperature=0.7,
+    max_tokens=1000
+)
+
+# Simple chat
+response = llm.invoke([
+    SystemMessage(content="You are a helpful AI assistant."),
+    HumanMessage(content="Explain quantum computing in simple terms.")
+])
+
+print(response.content)
+```
+
+### Advanced LangChain Features
+
+<CodeGroup>
+
+```python Chains
+from langchain.chains import LLMChain
+from langchain.prompts import PromptTemplate
+
+# Create a prompt template
+prompt = PromptTemplate(
+    input_variables=["topic", "audience"],
+    template="Explain {topic} to a {audience} audience in a clear and engaging way."
+)
+
+# Create chain with 0G LLM
+chain = LLMChain(
+    llm=ZGChat(
+        provider_address="0xf07240Efa67755B5311bc75784a061eDB47165Dd",
+        private_key="your-private-key"
+    ),
+    prompt=prompt
+)
+
+# Run the chain
+result = chain.run(topic="blockchain technology", audience="beginner")
+print(result)
+```
+
+```python Agents
+from langchain.agents import initialize_agent, AgentType
+from langchain.tools import Tool
+
+# Define custom tools
+def calculate_tool(expression: str) -> str:
+    """Calculate mathematical expressions"""
+    try:
+        return str(eval(expression))
+    except:
+        return "Invalid expression"
+
+tools = [
+    Tool(
+        name="Calculator",
+        func=calculate_tool,
+        description="Useful for mathematical calculations"
+    )
+]
+
+# Initialize agent with 0G LLM
+agent = initialize_agent(
+    tools=tools,
+    llm=ZGChat(
+        provider_address="0x3feE5a4dd5FDb8a32dDA97Bed899830605dBD9D3",  # deepseek-r1-70b for reasoning
+        private_key="your-private-key",
+        temperature=0.1
+    ),
+    agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
+    verbose=True
+)
+
+# Use the agent
+result = agent.run("What is 15 * 24 + 100?")
+print(result)
+```
+
+```python Memory & Retrieval
+from langchain.memory import ConversationBufferMemory
+from langchain.chains import ConversationChain
+
+# Create memory-enabled conversation
+memory = ConversationBufferMemory()
+
+conversation = ConversationChain(
+    llm=ZGChat(
+        provider_address="0xf07240Efa67755B5311bc75784a061eDB47165Dd",
+        private_key="your-private-key"
+    ),
+    memory=memory,
+    verbose=True
+)
+
+# Have a conversation
+response1 = conversation.predict(input="Hi, I'm working on a Python project.")
+response2 = conversation.predict(input="Can you help me with error handling?")
+response3 = conversation.predict(input="What did I mention I was working on?")
+```
+
+</CodeGroup>
+
+## Vercel AI SDK Integration
+
+<Card
+  title="Vercel AI SDK 0G Provider"
+  icon="triangle"
+  href="https://github.com/vercel/ai/pull/8976"
+>
+  Official Vercel AI SDK integration for 0G decentralized compute
+</Card>
+
+### Installation
+
+```bash
+npm install @ai-sdk/0g
+```
+
+### Basic Usage
+
+```typescript
+import { createZG } from '@ai-sdk/0g';
+import { generateText, streamText } from 'ai';
+
+// Initialize 0G provider
+const zg = createZG({
+  providerAddress: '0xf07240Efa67755B5311bc75784a061eDB47165Dd', // llama-3.3-70b-instruct
+  privateKey: 'your-private-key'
+});
+
+// Generate text
+const { text } = await generateText({
+  model: zg('llama-3.3-70b-instruct'),
+  prompt: 'Explain the benefits of decentralized AI compute.'
+});
+
+console.log(text);
+```
+
+### Streaming with React
+
+<CodeGroup>
+
+```tsx React Streaming
+'use client';
+
+import { useChat } from 'ai/react';
+
+export default function Chat() {
+  const { messages, input, handleInputChange, handleSubmit } = useChat({
+    api: '/api/chat',
+  });
+
+  return (
+    <div className="flex flex-col w-full max-w-md py-24 mx-auto stretch">
+      {messages.map(m => (
+        <div key={m.id} className="whitespace-pre-wrap">
+          {m.role === 'user' ? 'User: ' : 'AI: '}
+          {m.content}
+        </div>
+      ))}
+
+      <form onSubmit={handleSubmit}>
+        <input
+          className="fixed bottom-0 w-full max-w-md p-2 mb-8 border border-gray-300 rounded shadow-xl"
+          value={input}
+          placeholder="Say something..."
+          onChange={handleInputChange}
+        />
+      </form>
+    </div>
+  );
+}
+```
+
+```typescript API Route
+import { createZG } from '@ai-sdk/0g';
+import { streamText } from 'ai';
+
+const zg = createZG({
+  providerAddress: '0xf07240Efa67755B5311bc75784a061eDB47165Dd',
+  privateKey: process.env.ZG_PRIVATE_KEY!
+});
+
+export async function POST(req: Request) {
+  const { messages } = await req.json();
+
+  const result = await streamText({
+    model: zg('llama-3.3-70b-instruct'),
+    messages,
+    system: 'You are a helpful AI assistant powered by decentralized compute.'
+  });
+
+  return result.toDataStreamResponse();
+}
+```
+
+```typescript Tool Usage
+import { createZG } from '@ai-sdk/0g';
+import { generateText, tool } from 'ai';
+import { z } from 'zod';
+
+const zg = createZG({
+  providerAddress: '0x3feE5a4dd5FDb8a32dDA97Bed899830605dBD9D3', // deepseek-r1-70b for reasoning
+  privateKey: 'your-private-key'
+});
+
+const { text } = await generateText({
+  model: zg('deepseek-r1-70b'),
+  prompt: 'What is the weather in San Francisco?',
+  tools: {
+    getWeather: tool({
+      description: 'Get the current weather for a location',
+      parameters: z.object({
+        location: z.string().describe('The location to get weather for'),
+      }),
+      execute: async ({ location }) => {
+        // Implement weather API call
+        return { location, temperature: 72, condition: 'sunny' };
+      },
+    }),
+  },
+});
+
+console.log(text);
+```
+
+</CodeGroup>
+
+## OpenRouter Integration
+
+<Card
+  title="OpenRouter 0G Provider"
+  icon="route"
+  href="https://github.com/OpenRouterTeam/ai-sdk-provider/pull/191"
+>
+  OpenRouter integration bringing 0G models to the OpenRouter ecosystem
+</Card>
+
+### Installation
+
+```bash
+npm install @openrouter/ai-sdk-provider
+```
+
+### Usage
+
+```typescript
+import { createOpenRouter } from '@openrouter/ai-sdk-provider';
+import { generateText } from 'ai';
+
+// Configure OpenRouter with 0G provider
+const openrouter = createOpenRouter({
+  apiKey: process.env.OPENROUTER_API_KEY,
+  providers: {
+    '0g': {
+      providerAddress: '0xf07240Efa67755B5311bc75784a061eDB47165Dd',
+      privateKey: process.env.ZG_PRIVATE_KEY
+    }
+  }
+});
+
+// Use 0G models through OpenRouter
+const { text } = await generateText({
+  model: openrouter('0g/llama-3.3-70b-instruct'),
+  prompt: 'Explain the advantages of decentralized AI infrastructure.'
+});
+
+console.log(text);
+```
+
+### Model Routing
+
+```typescript
+// Route between different 0G models based on task complexity
+const routeModel = (taskComplexity: 'simple' | 'complex') => {
+  return taskComplexity === 'complex' 
+    ? openrouter('0g/deepseek-r1-70b')      // Complex reasoning
+    : openrouter('0g/llama-3.3-70b-instruct'); // General tasks
+};
+
+// Simple task
+const simpleResult = await generateText({
+  model: routeModel('simple'),
+  prompt: 'Write a brief summary of renewable energy.'
+});
+
+// Complex task
+const complexResult = await generateText({
+  model: routeModel('complex'),
+  prompt: 'Analyze the economic implications of transitioning to renewable energy, considering supply chain, job market, and policy factors.'
+});
+```
+
+## LlamaIndex Integration
+
+<Card
+  title="LlamaIndex 0G Provider"
+  icon="database"
+  href="https://github.com/run-llama/llama_index/pull/19968"
+>
+  LlamaIndex integration for RAG applications with 0G decentralized compute
+</Card>
+
+### Installation
+
+```bash
+pip install llama-index-llms-0g
+```
+
+### Basic RAG Setup
+
+```python
+from llama_index.llms.zg import ZG
+from llama_index.core import VectorStoreIndex, SimpleDirectoryReader
+from llama_index.core.settings import Settings
+
+# Configure 0G LLM
+Settings.llm = ZG(
+    provider_address="0xf07240Efa67755B5311bc75784a061eDB47165Dd",  # llama-3.3-70b-instruct
+    private_key="your-private-key",
+    temperature=0.1
+)
+
+# Load documents
+documents = SimpleDirectoryReader("./data").load_data()
+
+# Create index
+index = VectorStoreIndex.from_documents(documents)
+
+# Create query engine
+query_engine = index.as_query_engine()
+
+# Query the documents
+response = query_engine.query("What are the key findings in the research papers?")
+print(response)
+```
+
+### Advanced RAG with 0G
+
+<CodeGroup>
+
+```python Multi-Modal RAG
+from llama_index.core import StorageContext
+from llama_index.vector_stores.chroma import ChromaVectorStore
+from llama_index.embeddings.openai import OpenAIEmbedding
+import chromadb
+
+# Setup vector store
+chroma_client = chromadb.PersistentClient()
+chroma_collection = chroma_client.create_collection("documents")
+vector_store = ChromaVectorStore(chroma_collection=chroma_collection)
+storage_context = StorageContext.from_defaults(vector_store=vector_store)
+
+# Configure with 0G for reasoning-heavy tasks
+Settings.llm = ZG(
+    provider_address="0x3feE5a4dd5FDb8a32dDA97Bed899830605dBD9D3",  # deepseek-r1-70b
+    private_key="your-private-key",
+    temperature=0.2
+)
+
+# Create index with custom storage
+index = VectorStoreIndex.from_documents(
+    documents, 
+    storage_context=storage_context
+)
+
+# Advanced querying
+query_engine = index.as_query_engine(
+    similarity_top_k=5,
+    response_mode="tree_summarize"
+)
+
+response = query_engine.query(
+    "Analyze the trends across all documents and provide strategic recommendations."
+)
+```
+
+```python Agent-based RAG
+from llama_index.core.agent import ReActAgent
+from llama_index.core.tools import QueryEngineTool, ToolMetadata
+
+# Create multiple query engines for different document types
+research_index = VectorStoreIndex.from_documents(research_docs)
+financial_index = VectorStoreIndex.from_documents(financial_docs)
+
+# Create tools
+research_tool = QueryEngineTool(
+    query_engine=research_index.as_query_engine(),
+    metadata=ToolMetadata(
+        name="research_query",
+        description="Query research documents and papers"
+    )
+)
+
+financial_tool = QueryEngineTool(
+    query_engine=financial_index.as_query_engine(),
+    metadata=ToolMetadata(
+        name="financial_query", 
+        description="Query financial reports and data"
+    )
+)
+
+# Create agent with 0G LLM
+agent = ReActAgent.from_tools(
+    [research_tool, financial_tool],
+    llm=ZG(
+        provider_address="0x3feE5a4dd5FDb8a32dDA97Bed899830605dBD9D3",
+        private_key="your-private-key"
+    ),
+    verbose=True
+)
+
+# Use agent for complex queries
+response = agent.chat(
+    "Compare the research findings with the financial performance data and provide insights."
+)
+```
+
+```python Custom Retrieval
+from llama_index.core.retrievers import VectorIndexRetriever
+from llama_index.core.query_engine import RetrieverQueryEngine
+from llama_index.core.postprocessor import SimilarityPostprocessor
+
+# Custom retriever setup
+retriever = VectorIndexRetriever(
+    index=index,
+    similarity_top_k=10,
+)
+
+# Post-processing to filter results
+postprocessor = SimilarityPostprocessor(similarity_cutoff=0.7)
+
+# Custom query engine with 0G
+query_engine = RetrieverQueryEngine(
+    retriever=retriever,
+    response_synthesizer=get_response_synthesizer(
+        llm=ZG(
+            provider_address="0xf07240Efa67755B5311bc75784a061eDB47165Dd",
+            private_key="your-private-key",
+            temperature=0.3
+        )
+    ),
+    node_postprocessors=[postprocessor],
+)
+
+# Query with custom pipeline
+response = query_engine.query("What are the implications of the latest research?")
+```
+
+</CodeGroup>
+
+## Integration Benefits
+
+### Decentralized Advantages
+
+<CardGroup cols={2}>
+  <Card
+    title="No Vendor Lock-in"
+    icon="unlock"
+  >
+    Use familiar frameworks while avoiding dependency on centralized AI providers
+  </Card>
+  <Card
+    title="Cost Efficiency"
+    icon="dollar-sign"
+  >
+    Competitive pricing through decentralized compute marketplace
+  </Card>
+  <Card
+    title="Censorship Resistance"
+    icon="shield"
+  >
+    Decentralized network ensures availability and resistance to censorship
+  </Card>
+  <Card
+    title="Privacy & Security"
+    icon="lock"
+  >
+    TEE (Trusted Execution Environment) verification for secure computation
+  </Card>
+</CardGroup>
+
+### Framework-Specific Benefits
+
+| Framework | Key Benefits | Use Cases |
+|-----------|--------------|-----------|
+| **LangChain** | Seamless chain/agent integration, extensive ecosystem | Complex workflows, multi-step reasoning |
+| **Vercel AI SDK** | React streaming, edge deployment, type safety | Real-time chat, web applications |
+| **OpenRouter** | Model routing, fallback strategies, unified API | Production applications, model comparison |
+| **LlamaIndex** | RAG optimization, document processing, vector search | Knowledge bases, document analysis |
+
+## Getting Started
+
+1. **Choose your framework** based on your use case and existing stack
+2. **Install the appropriate 0G provider** using the installation commands above
+3. **Configure with your private key** and preferred model provider address
+4. **Start building** with decentralized AI compute!
+
+## Migration Guide
+
+### From OpenAI to 0G
+
+<CodeGroup>
+
+```typescript Before (OpenAI)
+import OpenAI from 'openai';
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY
+});
+
+const completion = await openai.chat.completions.create({
+  messages: [{ role: "user", content: "Hello!" }],
+  model: "llama-3.3-70b-instruct",
+});
+```
+
+```typescript After (0G via Vercel AI SDK)
+import { createZG } from '@ai-sdk/0g';
+import { generateText } from 'ai';
+
+const zg = createZG({
+  providerAddress: '0xf07240Efa67755B5311bc75784a061eDB47165Dd',
+  privateKey: process.env.ZG_PRIVATE_KEY
+});
+
+const { text } = await generateText({
+  model: zg('llama-3.3-70b-instruct'),
+  messages: [{ role: "user", content: "Hello!" }]
+});
+```
+
+</CodeGroup>
+
+### From Anthropic to 0G
+
+<CodeGroup>
+
+```python Before (Anthropic)
+import anthropic
+
+client = anthropic.Anthropic(
+    api_key="your-api-key"
+)
+
+message = client.messages.create(
+    model="claude-3-sonnet-20240229",
+    max_tokens=1000,
+    messages=[{"role": "user", "content": "Hello!"}]
+)
+```
+
+```python After (0G via LangChain)
+from langchain_0g import ZGChat
+from langchain.schema import HumanMessage
+
+llm = ZGChat(
+    provider_address="0x3feE5a4dd5FDb8a32dDA97Bed899830605dBD9D3",  # deepseek-r1-70b
+    private_key="your-private-key",
+    max_tokens=1000
+)
+
+response = llm.invoke([HumanMessage(content="Hello!")])
+```
+
+</CodeGroup>
+
+## Community & Support
+
+- **GitHub Discussions**: Join framework-specific discussions in each integration repository
+- **Discord**: Connect with the 0G community for integration support
+- **Documentation**: Comprehensive guides for each framework integration
+- **Examples**: Production-ready examples in each integration repository
+
+Ready to integrate 0G with your favorite framework? Check out the specific integration repositories linked above for detailed setup guides and examples!

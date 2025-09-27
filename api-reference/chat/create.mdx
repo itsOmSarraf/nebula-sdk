@@ -1,0 +1,124 @@
+# Create Chat
+
+Create a new chat instance to interact with AI models.
+
+## Constructor
+
+```typescript
+new Chat(config: ChatConfig)
+```
+
+### Parameters
+
+<ParamField path="config" type="ChatConfig" required>
+  Configuration object for the chat instance
+</ParamField>
+
+<ParamField path="config.apiKey" type="string" required>
+  Your API key for authentication
+</ParamField>
+
+<ParamField path="config.model" type="string" default="gpt-3.5-turbo">
+  The AI model to use for chat completions
+</ParamField>
+
+<ParamField path="config.maxTokens" type="number" default="1000">
+  Maximum number of tokens in the response
+</ParamField>
+
+<ParamField path="config.temperature" type="number" default="0.7">
+  Controls randomness in responses (0-1)
+</ParamField>
+
+<ParamField path="config.timeout" type="number" default="30000">
+  Request timeout in milliseconds
+</ParamField>
+
+<ParamField path="config.baseURL" type="string">
+  Custom base URL for the API endpoint
+</ParamField>
+
+## Response
+
+Returns a `Chat` instance that can be used to send messages and stream responses.
+
+## Example
+
+<CodeGroup>
+
+```typescript Basic Usage
+import { createAgent } from '@src/index';
+
+const agent = await createAgent({
+  name: 'My Assistant',
+  providerAddress: '0xf07240Efa67755B5311bc75784a061eDB47165Dd', // llama-3.3-70b-instruct
+  memoryBucket: 'my-agent-memory',
+  privateKey: 'your-private-key',
+  maxTokens: 2000,
+  temperature: 0.8
+});
+```
+
+```typescript Advanced Reasoning Model
+import { createAgent } from '@src/index';
+
+const agent = await createAgent({
+  name: 'Reasoning Assistant',
+  providerAddress: '0x3feE5a4dd5FDb8a32dDA97Bed899830605dBD9D3', // deepseek-r1-70b
+  memoryBucket: 'reasoning-memory',
+  privateKey: 'your-private-key',
+  maxTokens: 1500,
+  temperature: 0.3
+});
+```
+
+```typescript Custom Configuration
+import { createAgent } from '@src/index';
+
+const agent = await createAgent({
+  name: 'Custom Assistant',
+  providerAddress: '0xf07240Efa67755B5311bc75784a061eDB47165Dd',
+  memoryBucket: 'custom-memory',
+  privateKey: 'your-private-key',
+  rpcUrl: 'https://custom-rpc.0g.ai',
+  indexerRpc: 'https://custom-indexer.0g.ai',
+  kvRpc: 'https://custom-kv.0g.ai',
+  maxEphemeralMessages: 100,
+  temperature: 0.5,
+  maxTokens: 500
+});
+```
+
+</CodeGroup>
+
+## Available Models
+
+The 0G AI SDK connects to models running on the 0G decentralized compute network:
+
+| Model | Provider Address | Description | Verification |
+|-------|------------------|-------------|--------------|
+| `llama-3.3-70b-instruct` | `0xf07240Efa67755B5311bc75784a061eDB47165Dd` | State-of-the-art 70B parameter model for general AI tasks | TEE (TeeML) |
+| `deepseek-r1-70b` | `0x3feE5a4dd5FDb8a32dDA97Bed899830605dBD9D3` | Advanced reasoning model optimized for complex problem solving | TEE (TeeML) |
+
+## Error Handling
+
+The constructor will throw an error if:
+- No API key is provided and `ZG_API_KEY` environment variable is not set
+- Invalid configuration parameters are passed
+
+```typescript
+try {
+  const chat = new Chat({
+    apiKey: 'invalid-key',
+    model: 'llama-3.3-70b-instruct'
+  });
+} catch (error) {
+  console.error('Failed to create chat:', error.message);
+}
+```
+
+## Next Steps
+
+- [Send Messages](/api-reference/chat/stream)
+- [Stream Responses](/api-reference/chat/stream)
+- [View Chat History](/api-reference/chat/history)

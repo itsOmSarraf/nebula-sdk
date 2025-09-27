@@ -1,0 +1,488 @@
+# Execute Agent
+
+Execute tasks using an autonomous AI agent with tool integration and iterative problem-solving.
+
+## Method
+
+```typescript
+agent.execute(request: ExecutionRequest): Promise<ExecutionResult>
+```
+
+### Parameters
+
+<ParamField path="request" type="ExecutionRequest" required>
+  The execution request configuration
+</ParamField>
+
+<ParamField path="request.task" type="string" required>
+  Description of the task to execute
+</ParamField>
+
+<ParamField path="request.context" type="any">
+  Additional context or data for the task
+</ParamField>
+
+<ParamField path="request.maxIterations" type="number">
+  Override the default maximum iterations
+</ParamField>
+
+<ParamField path="request.timeout" type="number">
+  Override the default timeout in milliseconds
+</ParamField>
+
+<ParamField path="request.streaming" type="boolean" default="false">
+  Whether to stream intermediate results
+</ParamField>
+
+## Response
+
+<ResponseField name="success" type="boolean">
+  Whether the task was completed successfully
+</ResponseField>
+
+<ResponseField name="response" type="string">
+  The agent's final response or result
+</ResponseField>
+
+<ResponseField name="iterations" type="number">
+  Number of iterations used to complete the task
+</ResponseField>
+
+<ResponseField name="toolCalls" type="ToolCall[]">
+  Array of tool calls made during execution
+</ResponseField>
+
+<ResponseField name="executionTime" type="number">
+  Total execution time in milliseconds
+</ResponseField>
+
+<ResponseField name="memoryUpdates" type="MemoryUpdate[]">
+  Memory entries created or updated during execution
+</ResponseField>
+
+<ResponseField name="error" type="string">
+  Error message if execution failed
+</ResponseField>
+
+## Examples
+
+<CodeGroup>
+
+```typescript Basic Task Execution
+import { Agent, Chat, Memory } from '0g-ai-sdk';
+
+const chat = new Chat({ apiKey: 'your-api-key' });
+const memory = new Memory({ storageKey: 'agent-memory' });
+
+const agent = new Agent({
+  name: 'Assistant',
+  description: 'A helpful AI assistant',
+  tools: [
+    {
+      name: 'getCurrentTime',
+      description: 'Get the current time',
+      execute: () => new Date().toISOString()
+    }
+  ],
+  chat,
+  memory
+});
+
+// Execute a simple task
+const result = await agent.execute({
+  task: 'What time is it right now?'
+});
+
+console.log('Agent response:', result.response);
+console.log('Tools used:', result.toolCalls.length);
+console.log('Execution time:', result.executionTime, 'ms');
+```
+
+```typescript Complex Task with Context
+const agent = new Agent({
+  name: 'Data Analyst',
+  description: 'An AI agent that analyzes data and generates reports',
+  tools: [
+    {
+      name: 'analyzeData',
+      description: 'Analyze a dataset and return insights',
+      parameters: {
+        type: 'object',
+        properties: {
+          data: { type: 'array', description: 'Dataset to analyze' },
+          analysisType: { type: 'string', description: 'Type of analysis' }
+        },
+        required: ['data']
+      },
+      execute: ({ data, analysisType = 'summary' }) => {
+        // Implement data analysis logic
+        return {
+          mean: data.reduce((a, b) => a + b, 0) / data.length,
+          max: Math.max(...data),
+          min: Math.min(...data),
+          count: data.length
+        };
+      }
+    },
+    {
+      name: 'generateChart',
+      description: 'Generate a chart from data',
+      parameters: {
+        type: 'object',
+        properties: {
+          data: { type: 'array', description: 'Data for the chart' },
+          chartType: { type: 'string', description: 'Type of chart' }
+        },
+        required: ['data', 'chartType']
+      },
+      execute: ({ data, chartType }) => {
+        return `Generated ${chartType} chart with ${data.length} data points`;
+      }
+    }
+  ],
+  chat,
+  memory
+});
+
+// Execute with context
+const result = await agent.execute({
+  task: 'Analyze this sales data and create a visualization',
+  context: {
+    salesData: [100, 150, 200, 175, 300, 250, 400],
+    period: '2024 Q1',
+    department: 'Marketing'
+  },
+  maxIterations: 10
+});
+```
+
+```typescript Streaming Execution
+// Execute with streaming for real-time updates
+const result = await agent.execute({
+  task: 'Research the latest trends in AI and create a comprehensive report',
+  streaming: true,
+  maxIterations: 15
+});
+
+// Handle streaming updates (if supported)
+if (result.streaming) {
+  for await (const update of result.stream) {
+    console.log('Agent update:', update.message);
+    console.log('Current iteration:', update.iteration);
+    if (update.toolCall) {
+      console.log('Using tool:', update.toolCall.name);
+    }
+  }
+}
+```
+
+</CodeGroup>
+
+## Execution Flow
+
+### Iterative Problem Solving
+
+The agent follows this execution pattern:
+
+1. **Analyze Task**: Understand the user's request
+2. **Plan Approach**: Determine what tools and steps are needed
+3. **Execute Tools**: Call appropriate tools to gather information or perform actions
+4. **Evaluate Results**: Assess if the task is complete or needs more work
+5. **Iterate**: Repeat steps 2-4 until task is complete or max iterations reached
+
+```typescript
+// Example of agent's internal execution flow
+async function executeTask(task: string) {
+  let iteration = 0;
+  let isComplete = false;
+  const toolCalls = [];
+  
+  while (!isComplete && iteration < maxIterations) {
+    iteration++;
+    
+    // Agent analyzes current state and decides next action
+    const decision = await chat.send({
+      message: `Current task: ${task}\nIteration: ${iteration}\nWhat should I do next?`,
+      systemPrompt: agent.systemPrompt,
+      context: previousContext
+    });
+    
+    // Execute tool if needed
+    if (decision.requiresTool) {
+      const toolResult = await executeTool(decision.toolName, decision.parameters);
+      toolCalls.push({ name: decision.toolName, result: toolResult });
+    }
+    
+    // Check if task is complete
+    isComplete = await evaluateCompletion(task, toolCalls);
+  }
+  
+  return { isComplete, iteration, toolCalls };
+}
+```
+
+## Advanced Usage
+
+### Multi-step Workflows
+
+```typescript
+const workflowAgent = new Agent({
+  name: 'Workflow Agent',
+  description: 'Executes complex multi-step workflows',
+  tools: [
+    {
+      name: 'createWorkflowStep',
+      description: 'Create a new step in the workflow',
+      execute: async ({ stepName, description, dependencies = [] }) => {
+        await memory.store({
+          key: `workflow_step:${stepName}`,
+          value: { description, dependencies, status: 'pending' },
+          tags: ['workflow', 'step']
+        });
+        return `Created workflow step: ${stepName}`;
+      }
+    },
+    {
+      name: 'executeWorkflowStep',
+      description: 'Execute a workflow step',
+      execute: async ({ stepName }) => {
+        const step = await memory.retrieve(`workflow_step:${stepName}`);
+        if (!step) throw new Error(`Step ${stepName} not found`);
+        
+        // Check dependencies
+        for (const dep of step.value.dependencies) {
+          const depStep = await memory.retrieve(`workflow_step:${dep}`);
+          if (!depStep || depStep.value.status !== 'completed') {
+            throw new Error(`Dependency ${dep} not completed`);
+          }
+        }
+        
+        // Execute step logic here
+        await memory.store({
+          key: `workflow_step:${stepName}`,
+          value: { ...step.value, status: 'completed' }
+        });
+        
+        return `Completed workflow step: ${stepName}`;
+      }
+    }
+  ],
+  chat,
+  memory
+});
+
+const result = await workflowAgent.execute({
+  task: `Create and execute a workflow with these steps:
+         1. Data collection
+         2. Data processing (depends on step 1)
+         3. Analysis (depends on step 2)
+         4. Report generation (depends on step 3)`,
+  maxIterations: 20
+});
+```
+
+### Error Recovery
+
+```typescript
+const resilientAgent = new Agent({
+  name: 'Resilient Agent',
+  description: 'An agent that can recover from errors',
+  tools: [
+    {
+      name: 'retryOperation',
+      description: 'Retry a failed operation with different parameters',
+      execute: async ({ operation, newParams, maxRetries = 3 }) => {
+        let attempts = 0;
+        let lastError;
+        
+        while (attempts < maxRetries) {
+          try {
+            attempts++;
+            // Attempt the operation
+            return await performOperation(operation, newParams);
+          } catch (error) {
+            lastError = error;
+            console.log(`Attempt ${attempts} failed:`, error.message);
+            
+            // Wait before retry
+            await new Promise(resolve => setTimeout(resolve, 1000 * attempts));
+          }
+        }
+        
+        throw new Error(`Operation failed after ${maxRetries} attempts: ${lastError.message}`);
+      }
+    },
+    {
+      name: 'logError',
+      description: 'Log an error for debugging',
+      execute: async ({ error, context }) => {
+        await memory.store({
+          key: `error_log:${Date.now()}`,
+          value: { error: error.toString(), context, timestamp: new Date() },
+          tags: ['error', 'log']
+        });
+        return 'Error logged successfully';
+      }
+    }
+  ],
+  chat,
+  memory
+});
+```
+
+### Collaborative Agents
+
+```typescript
+// Create multiple specialized agents that can work together
+const researchAgent = new Agent({
+  name: 'Research Agent',
+  description: 'Specializes in information gathering',
+  tools: [/* research tools */],
+  chat,
+  memory
+});
+
+const analysisAgent = new Agent({
+  name: 'Analysis Agent',
+  description: 'Specializes in data analysis',
+  tools: [/* analysis tools */],
+  chat,
+  memory
+});
+
+const reportAgent = new Agent({
+  name: 'Report Agent',
+  description: 'Specializes in report generation',
+  tools: [/* reporting tools */],
+  chat,
+  memory
+});
+
+// Orchestrate collaborative work
+async function collaborativeTask(topic: string) {
+  // Step 1: Research
+  const researchResult = await researchAgent.execute({
+    task: `Research the topic: ${topic}`
+  });
+  
+  // Step 2: Analysis
+  const analysisResult = await analysisAgent.execute({
+    task: 'Analyze the research findings',
+    context: { researchFindings: researchResult.response }
+  });
+  
+  // Step 3: Report
+  const reportResult = await reportAgent.execute({
+    task: 'Generate a comprehensive report',
+    context: {
+      research: researchResult.response,
+      analysis: analysisResult.response
+    }
+  });
+  
+  return reportResult;
+}
+```
+
+## Performance Monitoring
+
+### Execution Metrics
+
+```typescript
+class AgentMetrics {
+  async trackExecution(agentName: string, result: ExecutionResult) {
+    await memory.store({
+      key: `metrics:${agentName}:${Date.now()}`,
+      value: {
+        success: result.success,
+        iterations: result.iterations,
+        executionTime: result.executionTime,
+        toolCallCount: result.toolCalls.length,
+        timestamp: new Date()
+      },
+      tags: ['metrics', 'execution', agentName]
+    });
+  }
+  
+  async getPerformanceStats(agentName: string) {
+    const metrics = await memory.search({
+      tags: ['metrics', 'execution', agentName],
+      limit: 100
+    });
+    
+    const executions = metrics.results.map(r => r.value);
+    
+    return {
+      totalExecutions: executions.length,
+      successRate: executions.filter(e => e.success).length / executions.length,
+      avgExecutionTime: executions.reduce((sum, e) => sum + e.executionTime, 0) / executions.length,
+      avgIterations: executions.reduce((sum, e) => sum + e.iterations, 0) / executions.length,
+      avgToolCalls: executions.reduce((sum, e) => sum + e.toolCallCount, 0) / executions.length
+    };
+  }
+}
+
+const metrics = new AgentMetrics();
+
+// Track each execution
+const result = await agent.execute({ task: 'Complete this task' });
+await metrics.trackExecution('Assistant', result);
+
+// Get performance stats
+const stats = await metrics.getPerformanceStats('Assistant');
+console.log('Agent performance:', stats);
+```
+
+## Error Handling
+
+```typescript
+try {
+  const result = await agent.execute({
+    task: 'Perform a complex analysis',
+    timeout: 60000 // 1 minute timeout
+  });
+  
+  if (!result.success) {
+    console.error('Task failed:', result.error);
+    
+    // Analyze failure
+    if (result.iterations >= agent.maxIterations) {
+      console.log('Failed due to iteration limit');
+    } else if (result.executionTime >= request.timeout) {
+      console.log('Failed due to timeout');
+    }
+  }
+} catch (error) {
+  console.error('Execution error:', error.message);
+  
+  // Handle specific error types
+  switch (error.code) {
+    case 'TOOL_EXECUTION_FAILED':
+      console.log('A tool failed to execute');
+      break;
+    case 'MEMORY_ERROR':
+      console.log('Memory operation failed');
+      break;
+    case 'CHAT_ERROR':
+      console.log('Chat API error');
+      break;
+    default:
+      console.log('Unknown error occurred');
+  }
+}
+```
+
+## Best Practices
+
+1. **Clear task descriptions**: Provide specific, actionable task descriptions
+2. **Appropriate limits**: Set reasonable maxIterations and timeout values
+3. **Context provision**: Include relevant context to help the agent understand the task
+4. **Error handling**: Always handle potential execution failures
+5. **Performance monitoring**: Track agent performance to identify optimization opportunities
+6. **Tool optimization**: Ensure tools are efficient and reliable
+
+## Related
+
+- [Create Agent](/api-reference/agent/create)
+- [Agent Tools](/api-reference/agent/tools)
+- [Memory Integration](/api-reference/memory/store)

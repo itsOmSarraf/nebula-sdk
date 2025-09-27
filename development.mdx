@@ -1,0 +1,138 @@
+# Development
+
+Learn how to set up your development environment and contribute to the 0G AI SDK.
+
+## Prerequisites
+
+Before you begin, ensure you have the following installed:
+
+- **Node.js** (v18 or higher)
+- **npm**, **yarn**, or **pnpm**
+- **TypeScript** (v5.0 or higher)
+
+## Project Setup
+
+1. Clone the repository:
+
+```bash
+git clone https://github.com/0glabs/0g-ai-sdk.git
+cd 0g-ai-sdk
+```
+
+2. Install dependencies:
+
+```bash
+npm install
+```
+
+3. Build the project:
+
+```bash
+npm run build
+```
+
+4. Run in development mode:
+
+```bash
+npm run dev
+```
+
+## Project Structure
+
+```
+0g-ai-sdk/
+├── src/                    # Source code
+│   ├── Agent.ts           # Agent implementation
+│   ├── Chat.ts            # Chat functionality
+│   ├── Memory.ts          # Memory system
+│   ├── ZGStorageClient.ts # Storage client
+│   ├── ZGComputeBroker.ts # Compute broker
+│   ├── types.ts           # Type definitions
+│   └── tools/             # Tool implementations
+├── examples/              # Example usage
+├── dist/                  # Compiled output
+└── docs/                  # Documentation
+```
+
+## Building
+
+The project uses TypeScript for compilation:
+
+```bash
+# Build once
+npm run build
+
+# Build and watch for changes
+npm run dev
+
+# Prepare for publishing
+npm run prepublishOnly
+```
+
+## Testing
+
+Run the example files to test functionality:
+
+```bash
+# Basic usage example
+npx ts-node examples/basic-usage.ts
+
+# Streaming chat example
+npx ts-node examples/streaming-chat.ts
+
+# Advanced memory example
+npx ts-node examples/advanced-memory.ts
+```
+
+## Code Style
+
+The project follows these conventions:
+
+- **TypeScript**: Strict mode enabled
+- **Naming**: PascalCase for classes, camelCase for functions/variables
+- **Exports**: Use named exports for better tree-shaking
+- **Documentation**: JSDoc comments for all public APIs
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/amazing-feature`
+3. Make your changes
+4. Add tests if applicable
+5. Commit your changes: `git commit -m 'Add amazing feature'`
+6. Push to the branch: `git push origin feature/amazing-feature`
+7. Open a Pull Request
+
+## API Design Principles
+
+When contributing to the SDK, follow these principles:
+
+### Consistency
+- Use consistent naming patterns across all modules
+- Maintain similar parameter structures for related functions
+- Follow the established error handling patterns
+
+### Simplicity
+- Provide sensible defaults for optional parameters
+- Keep the public API surface minimal and focused
+- Use builder patterns for complex configurations
+
+### TypeScript First
+- Provide comprehensive type definitions
+- Use generics where appropriate for type safety
+- Export all necessary types for consumers
+
+## Release Process
+
+1. Update version in `package.json`
+2. Update `CHANGELOG.md` with new features and fixes
+3. Run `npm run build` to ensure everything compiles
+4. Create a git tag: `git tag v1.x.x`
+5. Push tags: `git push --tags`
+6. Publish to npm: `npm publish`
+
+## Getting Help
+
+- Check existing [GitHub Issues](https://github.com/0glabs/0g-ai-sdk/issues)
+- Join our [Discord Community](https://discord.gg/0g)
+- Read the [API Documentation](/api-reference/introduction)

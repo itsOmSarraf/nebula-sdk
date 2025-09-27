@@ -1,0 +1,634 @@
+# LlamaIndex Integration
+
+<Warning>
+**Integration Status: In Progress** - This integration is currently under development. The PR is pending merge: [run-llama/llama_index#19968](https://github.com/run-llama/llama_index/pull/19968)
+</Warning>
+
+## Overview
+
+LlamaIndex is a data framework for building RAG (Retrieval-Augmented Generation) applications with advanced document processing, vector search, and knowledge management capabilities. The 0G integration brings decentralized compute to LlamaIndex's powerful data orchestration.
+
+### What is LlamaIndex?
+
+LlamaIndex is designed for building data-augmented LLM applications with:
+- **Document Processing**: Advanced parsing and chunking of various document formats
+- **Vector Search**: Efficient similarity search and retrieval
+- **RAG Pipelines**: End-to-end retrieval-augmented generation workflows
+- **Agent Systems**: Data-aware agents that can query and reason over knowledge bases
+- **Multi-Modal Support**: Handle text, images, and structured data
+
+## Installation
+
+Once the integration is merged, you'll be able to install it with:
+
+```bash
+pip install llama-index-llms-0g
+```
+
+## Supported Models
+
+| Model | Provider Address | Best For |
+|-------|------------------|----------|
+| **llama-3.3-70b-instruct** | `0xf07240Efa67755B5311bc75784a061eDB47165Dd` | General RAG, document Q&A |
+| **deepseek-r1-70b** | `0x3feE5a4dd5FDb8a32dDA97Bed899830605dBD9D3` | Complex analysis, reasoning over data |
+
+## Basic RAG Setup
+
+### Simple Document Q&A
+
+```python
+from llama_index.llms.zg import ZG
+from llama_index.core import VectorStoreIndex, SimpleDirectoryReader
+from llama_index.core.settings import Settings
+
+# Configure 0G LLM
+Settings.llm = ZG(
+    provider_address="0xf07240Efa67755B5311bc75784a061eDB47165Dd",  # llama-3.3-70b-instruct
+    private_key="your-private-key",
+    temperature=0.1
+)
+
+# Load documents
+documents = SimpleDirectoryReader("./data").load_data()
+
+# Create index
+index = VectorStoreIndex.from_documents(documents)
+
+# Create query engine
+query_engine = index.as_query_engine()
+
+# Query the documents
+response = query_engine.query("What are the key findings in the research papers?")
+print(response)
+```
+
+### Custom Document Processing
+
+```python
+from llama_index.core.node_parser import SentenceSplitter
+from llama_index.core.extractors import TitleExtractor, QuestionsAnsweredExtractor
+
+# Configure advanced document processing
+Settings.llm = ZG(
+    provider_address="0x3feE5a4dd5FDb8a32dDA97Bed899830605dBD9D3",  # deepseek for analysis
+    private_key="your-private-key",
+    temperature=0.2
+)
+
+# Advanced text splitting
+text_splitter = SentenceSplitter(
+    chunk_size=512,
+    chunk_overlap=50
+)
+
+# Metadata extractors
+extractors = [
+    TitleExtractor(nodes=5),
+    QuestionsAnsweredExtractor(questions=3)
+]
+
+# Process documents with extractors
+from llama_index.core.ingestion import IngestionPipeline
+
+pipeline = IngestionPipeline(
+    transformations=[text_splitter] + extractors
+)
+
+nodes = pipeline.run(documents=documents)
+
+# Create index from processed nodes
+index = VectorStoreIndex(nodes)
+```
+
+## Advanced RAG Patterns
+
+### Multi-Document RAG
+
+```python
+from llama_index.core import StorageContext
+from llama_index.vector_stores.chroma import ChromaVectorStore
+import chromadb
+
+# Setup persistent vector store
+chroma_client = chromadb.PersistentClient(path="./chroma_db")
+chroma_collection = chroma_client.create_collection("documents")
+vector_store = ChromaVectorStore(chroma_collection=chroma_collection)
+storage_context = StorageContext.from_defaults(vector_store=vector_store)
+
+# Configure with 0G for reasoning-heavy tasks
+Settings.llm = ZG(
+    provider_address="0x3feE5a4dd5FDb8a32dDA97Bed899830605dBD9D3",  # deepseek-r1-70b
+    private_key="your-private-key",
+    temperature=0.2
+)
+
+# Load multiple document types
+research_docs = SimpleDirectoryReader("./research_papers").load_data()
+financial_docs = SimpleDirectoryReader("./financial_reports").load_data()
+legal_docs = SimpleDirectoryReader("./legal_documents").load_data()
+
+all_documents = research_docs + financial_docs + legal_docs
+
+# Create index with custom storage
+index = VectorStoreIndex.from_documents(
+    all_documents, 
+    storage_context=storage_context
+)
+
+# Advanced querying with metadata filtering
+query_engine = index.as_query_engine(
+    similarity_top_k=10,
+    response_mode="tree_summarize",
+    filters={"document_type": "research"}  # Filter by document type
+)
+
+response = query_engine.query(
+    "Analyze the research trends and their financial implications based on the available documents."
+)
+```
+
+### Agent-based RAG
+
+```python
+from llama_index.core.agent import ReActAgent
+from llama_index.core.tools import QueryEngineTool, ToolMetadata
+
+# Create specialized query engines for different document types
+research_index = VectorStoreIndex.from_documents(research_docs)
+financial_index = VectorStoreIndex.from_documents(financial_docs)
+legal_index = VectorStoreIndex.from_documents(legal_docs)
+
+# Create tools for the agent
+research_tool = QueryEngineTool(
+    query_engine=research_index.as_query_engine(),
+    metadata=ToolMetadata(
+        name="research_query",
+        description="Query research documents and academic papers for scientific insights"
+    )
+)
+
+financial_tool = QueryEngineTool(
+    query_engine=financial_index.as_query_engine(),
+    metadata=ToolMetadata(
+        name="financial_query", 
+        description="Query financial reports and market data for economic insights"
+    )
+)
+
+legal_tool = QueryEngineTool(
+    query_engine=legal_index.as_query_engine(),
+    metadata=ToolMetadata(
+        name="legal_query",
+        description="Query legal documents and regulations for compliance insights"
+    )
+)
+
+# Create agent with 0G LLM
+agent = ReActAgent.from_tools(
+    [research_tool, financial_tool, legal_tool],
+    llm=ZG(
+        provider_address="0x3feE5a4dd5FDb8a32dDA97Bed899830605dBD9D3",
+        private_key="your-private-key"
+    ),
+    verbose=True
+)
+
+# Use agent for complex cross-document queries
+response = agent.chat(
+    "Compare the research findings with the financial performance data and identify any legal compliance issues."
+)
+print(response)
+```
+
+### Custom Retrieval Strategies
+
+```python
+from llama_index.core.retrievers import VectorIndexRetriever
+from llama_index.core.query_engine import RetrieverQueryEngine
+from llama_index.core.postprocessor import SimilarityPostprocessor, KeywordNodePostprocessor
+
+# Custom retriever setup
+retriever = VectorIndexRetriever(
+    index=index,
+    similarity_top_k=15,  # Retrieve more candidates
+)
+
+# Post-processing to filter and rerank results
+postprocessors = [
+    KeywordNodePostprocessor(
+        keywords=["important", "significant", "key", "critical"],
+        exclude_keywords=["irrelevant", "minor"]
+    ),
+    SimilarityPostprocessor(similarity_cutoff=0.7)
+]
+
+# Custom query engine with 0G
+query_engine = RetrieverQueryEngine(
+    retriever=retriever,
+    response_synthesizer=get_response_synthesizer(
+        llm=ZG(
+            provider_address="0xf07240Efa67755B5311bc75784a061eDB47165Dd",
+            private_key="your-private-key",
+            temperature=0.3
+        ),
+        response_mode="compact"
+    ),
+    node_postprocessors=postprocessors,
+)
+
+# Query with custom pipeline
+response = query_engine.query("What are the most significant implications of the latest research?")
+```
+
+## Multi-Modal RAG
+
+### Document + Image Analysis
+
+```python
+from llama_index.core import SimpleDirectoryReader
+from llama_index.multi_modal_llms.openai import OpenAIMultiModal
+
+# Load documents with images
+documents = SimpleDirectoryReader(
+    "./mixed_content",
+    required_exts=[".pdf", ".txt", ".png", ".jpg"]
+).load_data()
+
+# Configure multi-modal processing
+# Note: This example shows the pattern - actual multi-modal support depends on model capabilities
+Settings.llm = ZG(
+    provider_address="0xf07240Efa67755B5311bc75784a061eDB47165Dd",
+    private_key="your-private-key"
+)
+
+# Create multi-modal index
+index = VectorStoreIndex.from_documents(documents)
+
+# Query with image understanding
+response = query_engine.query(
+    "Analyze the charts and graphs in the documents and explain the trends they show."
+)
+```
+
+### Structured Data Integration
+
+```python
+from llama_index.core import Document
+import pandas as pd
+import json
+
+# Load structured data
+df = pd.read_csv("data.csv")
+json_data = json.load(open("metadata.json"))
+
+# Convert structured data to documents
+structured_docs = []
+
+# Convert DataFrame to documents
+for _, row in df.iterrows():
+    doc_text = f"Record: {row.to_dict()}"
+    doc = Document(text=doc_text, metadata={"type": "structured_data", "source": "csv"})
+    structured_docs.append(doc)
+
+# Convert JSON to documents
+for key, value in json_data.items():
+    doc_text = f"{key}: {json.dumps(value, indent=2)}"
+    doc = Document(text=doc_text, metadata={"type": "json_data", "key": key})
+    structured_docs.append(doc)
+
+# Combine with text documents
+all_docs = documents + structured_docs
+
+# Create unified index
+unified_index = VectorStoreIndex.from_documents(all_docs)
+
+# Query across structured and unstructured data
+response = unified_index.as_query_engine().query(
+    "What insights can you derive by combining the structured data with the document analysis?"
+)
+```
+
+## Performance Optimization
+
+### Async Processing
+
+```python
+import asyncio
+from llama_index.core.async_utils import run_jobs
+
+async def process_documents_async(document_paths):
+    """Process multiple documents asynchronously"""
+    
+    async def process_single_doc(path):
+        docs = SimpleDirectoryReader(path).load_data()
+        index = VectorStoreIndex.from_documents(docs)
+        return index
+    
+    # Process documents in parallel
+    indices = await run_jobs(
+        [process_single_doc(path) for path in document_paths],
+        workers=4
+    )
+    
+    return indices
+
+# Usage
+document_paths = ["./docs1", "./docs2", "./docs3", "./docs4"]
+indices = asyncio.run(process_documents_async(document_paths))
+```
+
+### Caching and Persistence
+
+```python
+from llama_index.core.storage.docstore import SimpleDocumentStore
+from llama_index.core.storage.index_store import SimpleIndexStore
+from llama_index.core.storage.vector_store import SimpleVectorStore
+
+# Setup persistent storage
+storage_context = StorageContext.from_defaults(
+    docstore=SimpleDocumentStore(),
+    vector_store=SimpleVectorStore(),
+    index_store=SimpleIndexStore(),
+)
+
+# Create index with persistence
+index = VectorStoreIndex.from_documents(
+    documents,
+    storage_context=storage_context
+)
+
+# Persist to disk
+storage_context.persist(persist_dir="./storage")
+
+# Load from disk later
+from llama_index.core import load_index_from_storage
+
+storage_context = StorageContext.from_defaults(persist_dir="./storage")
+loaded_index = load_index_from_storage(storage_context)
+```
+
+## Configuration Options
+
+### Model Selection by Task
+
+```python
+# Different models for different RAG components
+class TaskSpecificLLMs:
+    def __init__(self):
+        # General purpose model for most queries
+        self.general_llm = ZG(
+            provider_address="0xf07240Efa67755B5311bc75784a061eDB47165Dd",
+            temperature=0.3
+        )
+        
+        # Reasoning model for complex analysis
+        self.reasoning_llm = ZG(
+            provider_address="0x3feE5a4dd5FDb8a32dDA97Bed899830605dBD9D3",
+            temperature=0.1
+        )
+    
+    def get_llm_for_task(self, task_type: str):
+        if task_type in ["analysis", "reasoning", "comparison"]:
+            return self.reasoning_llm
+        return self.general_llm
+
+# Usage in query engines
+task_llms = TaskSpecificLLMs()
+
+# Create different query engines for different tasks
+analysis_engine = index.as_query_engine(
+    llm=task_llms.get_llm_for_task("analysis"),
+    response_mode="tree_summarize"
+)
+
+general_engine = index.as_query_engine(
+    llm=task_llms.get_llm_for_task("general"),
+    response_mode="compact"
+)
+```
+
+### Custom Prompts
+
+```python
+from llama_index.core.prompts import PromptTemplate
+
+# Custom RAG prompt for 0G models
+RAG_PROMPT = PromptTemplate(
+    "Context information is below.\n"
+    "---------------------\n"
+    "{context_str}\n"
+    "---------------------\n"
+    "You are an AI assistant powered by decentralized compute. "
+    "Using the context information and not prior knowledge, "
+    "answer the query with detailed analysis and cite specific sources.\n"
+    "Query: {query_str}\n"
+    "Answer: "
+)
+
+# Apply custom prompt
+query_engine = index.as_query_engine(
+    text_qa_template=RAG_PROMPT,
+    similarity_top_k=5
+)
+```
+
+## Integration with 0G Storage
+
+```python
+from llama_index.core.storage.docstore import BaseDocumentStore
+import json
+
+class ZGDocumentStore(BaseDocumentStore):
+    """Custom document store using 0G storage"""
+    
+    def __init__(self, zg_storage_client):
+        self.storage_client = zg_storage_client
+        
+    def add_documents(self, docs):
+        for doc in docs:
+            doc_data = {
+                "text": doc.text,
+                "metadata": doc.metadata,
+                "id": doc.doc_id
+            }
+            # Store document in 0G network
+            self.storage_client.upload(
+                json.dumps(doc_data),
+                f"doc_{doc.doc_id}.json"
+            )
+    
+    def get_document(self, doc_id):
+        # Retrieve document from 0G network
+        doc_data = json.loads(
+            self.storage_client.download(f"doc_{doc_id}.json")
+        )
+        return Document(
+            text=doc_data["text"],
+            metadata=doc_data["metadata"],
+            doc_id=doc_data["id"]
+        )
+
+# Usage with 0G storage
+from src.ZGStorageClient import ZGStorageClientImpl
+
+zg_storage = ZGStorageClientImpl(
+    indexer_rpc="https://indexer-storage-testnet-turbo.0g.ai",
+    kv_rpc="http://3.101.147.150:6789",
+    rpc_url="https://evmrpc-testnet.0g.ai",
+    signer=your_wallet_signer
+)
+
+zg_docstore = ZGDocumentStore(zg_storage)
+
+# Create storage context with 0G document store
+storage_context = StorageContext.from_defaults(
+    docstore=zg_docstore
+)
+```
+
+## Benefits of 0G + LlamaIndex
+
+<CardGroup cols={2}>
+  <Card
+    title="Decentralized Knowledge"
+    icon="database"
+  >
+    Store and process knowledge bases on decentralized infrastructure
+  </Card>
+  <Card
+    title="Advanced RAG"
+    icon="search"
+  >
+    Leverage LlamaIndex's sophisticated retrieval and generation capabilities
+  </Card>
+  <Card
+    title="Data Privacy"
+    icon="shield"
+  >
+    Keep sensitive documents and analysis on decentralized networks
+  </Card>
+  <Card
+    title="Scalable Processing"
+    icon="expand"
+  >
+    Handle large document collections with distributed compute
+  </Card>
+</CardGroup>
+
+## Example Applications
+
+### Enterprise Knowledge Base
+
+```python
+class EnterpriseRAG:
+    def __init__(self):
+        self.llm = ZG(
+            provider_address="0x3feE5a4dd5FDb8a32dDA97Bed899830605dBD9D3",
+            private_key="your-private-key"
+        )
+        self.indices = {}
+    
+    def add_department_docs(self, department: str, doc_path: str):
+        """Add documents for a specific department"""
+        docs = SimpleDirectoryReader(doc_path).load_data()
+        
+        # Add department metadata
+        for doc in docs:
+            doc.metadata["department"] = department
+        
+        index = VectorStoreIndex.from_documents(docs)
+        self.indices[department] = index
+    
+    def cross_department_query(self, query: str):
+        """Query across all departments"""
+        results = {}
+        
+        for dept, index in self.indices.items():
+            engine = index.as_query_engine(llm=self.llm)
+            response = engine.query(f"From {dept} perspective: {query}")
+            results[dept] = response
+        
+        return results
+
+# Usage
+enterprise_rag = EnterpriseRAG()
+enterprise_rag.add_department_docs("engineering", "./engineering_docs")
+enterprise_rag.add_department_docs("marketing", "./marketing_docs")
+enterprise_rag.add_department_docs("legal", "./legal_docs")
+
+# Cross-department analysis
+results = enterprise_rag.cross_department_query(
+    "What are the implications of the new AI regulation?"
+)
+```
+
+### Research Assistant
+
+```python
+class ResearchAssistant:
+    def __init__(self):
+        self.llm = ZG(
+            provider_address="0x3feE5a4dd5FDb8a32dDA97Bed899830605dBD9D3",
+            private_key="your-private-key",
+            temperature=0.2
+        )
+    
+    def analyze_research_corpus(self, papers_path: str):
+        """Analyze a corpus of research papers"""
+        papers = SimpleDirectoryReader(papers_path).load_data()
+        
+        # Extract metadata from papers
+        extractors = [
+            TitleExtractor(),
+            QuestionsAnsweredExtractor(questions=5),
+            SummaryExtractor(summaries=["prev", "self", "next"])
+        ]
+        
+        pipeline = IngestionPipeline(transformations=extractors)
+        nodes = pipeline.run(documents=papers)
+        
+        index = VectorStoreIndex(nodes)
+        
+        return index.as_query_engine(
+            llm=self.llm,
+            response_mode="tree_summarize"
+        )
+    
+    def generate_literature_review(self, query_engine, topic: str):
+        """Generate a comprehensive literature review"""
+        
+        queries = [
+            f"What are the main research questions in {topic}?",
+            f"What methodologies are commonly used in {topic} research?",
+            f"What are the key findings and conclusions in {topic}?",
+            f"What are the current gaps and future directions in {topic}?",
+            f"How has {topic} research evolved over time?"
+        ]
+        
+        sections = {}
+        for query in queries:
+            response = query_engine.query(query)
+            sections[query] = response
+        
+        return sections
+
+# Usage
+assistant = ResearchAssistant()
+query_engine = assistant.analyze_research_corpus("./ai_papers")
+review = assistant.generate_literature_review(query_engine, "machine learning")
+```
+
+## Getting Started
+
+1. **Wait for the integration to be merged** - Track progress at [run-llama/llama_index#19968](https://github.com/run-llama/llama_index/pull/19968)
+2. **Install the package** once available: `pip install llama-index-llms-0g`
+3. **Prepare your documents** in a directory structure
+4. **Set up your 0G credentials** and choose appropriate models
+5. **Start building** advanced RAG applications!
+
+## Community & Support
+
+- **GitHub**: [run-llama/llama_index](https://github.com/run-llama/llama_index)
+- **LlamaIndex Docs**: [docs.llamaindex.ai](https://docs.llamaindex.ai)
+- **Discord**: LlamaIndex community for RAG and data framework support
+- **0G Discord**: Join for 0G-specific integration help
