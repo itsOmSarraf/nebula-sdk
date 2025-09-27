@@ -1,5 +1,5 @@
 """
-Basic usage example for the 0G AI SDK Python library.
+Basic usage example for the Nebula SDK Python library.
 
 This example demonstrates:
 - Creating an agent
@@ -10,7 +10,7 @@ This example demonstrates:
 
 import asyncio
 import os
-from zg_ai_sdk import create_agent
+from nebula_sdk import create_agent
 
 async def main():
     """Main function demonstrating basic SDK usage"""

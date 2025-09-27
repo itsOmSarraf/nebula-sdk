@@ -1,21 +1,21 @@
 # Python Quickstart
 
-Get started with the 0G AI SDK Python library in just a few minutes.
+Get started with the Nebula SDK Python library in just a few minutes.
 
 ## Installation
 
 <CodeGroup>
 
 ```bash pip
-pip install zg-ai-sdk
+pip install nebula-sdk
 ```
 
 ```bash poetry
-poetry add zg-ai-sdk
+poetry add nebula-sdk
 ```
 
 ```bash conda
-conda install -c conda-forge zg-ai-sdk
+conda install -c conda-forge nebula-sdk
 ```
 
 </CodeGroup>
@@ -26,7 +26,7 @@ First, import and initialize the SDK:
 
 ```python
 import asyncio
-from zg_ai_sdk import create_agent
+from nebula_sdk import create_agent
 
 async def main():
     # Create a pre-configured agent with 0G network
@@ -50,7 +50,7 @@ Create a simple chat interaction:
 
 ```python
 import asyncio
-from zg_ai_sdk import create_agent
+from nebula_sdk import create_agent
 
 async def basic_chat():
     agent = await create_agent({
@@ -78,7 +78,7 @@ For real-time responses, use streaming:
 
 ```python
 import asyncio
-from zg_ai_sdk import create_agent
+from nebula_sdk import create_agent
 
 async def streaming_chat():
     agent = await create_agent({
@@ -110,7 +110,7 @@ Enhance your chat with persistent memory:
 
 ```python
 import asyncio
-from zg_ai_sdk import create_agent
+from nebula_sdk import create_agent
 
 async def chat_with_memory():
     agent = await create_agent({
@@ -149,7 +149,7 @@ Build an agent that maintains conversation context:
 
 ```python
 import asyncio
-from zg_ai_sdk import create_agent
+from nebula_sdk import create_agent
 
 async def contextual_agent():
     agent = await create_agent({
@@ -195,7 +195,7 @@ Customize your agent with advanced settings:
 
 ```python
 import asyncio
-from zg_ai_sdk import create_agent
+from nebula_sdk import create_agent
 
 async def advanced_agent():
     agent = await create_agent({
@@ -249,7 +249,7 @@ Implement proper error handling for production use:
 
 ```python
 import asyncio
-from zg_ai_sdk import create_agent, SDKError
+from nebula_sdk import create_agent, SDKError
 
 async def robust_agent():
     try:
@@ -285,7 +285,7 @@ Set up environment variables for easier configuration:
 ```python
 import os
 import asyncio
-from zg_ai_sdk import create_agent
+from nebula_sdk import create_agent
 
 # Set environment variables (or use a .env file)
 os.environ['ZG_PRIVATE_KEY'] = 'your-private-key'
@@ -347,7 +347,7 @@ Now that you have the basics down, explore more advanced features:
 
 ## Available Models
 
-The 0G AI SDK connects to models running on the 0G decentralized compute network:
+The Nebula SDK connects to models running on the 0G decentralized compute network:
 
 | Model | Provider Address | Best For | Verification |
 |-------|------------------|----------|--------------|
@@ -356,17 +356,17 @@ The 0G AI SDK connects to models running on the 0G decentralized compute network
 
 ## Examples Repository
 
-Check out complete examples in our [GitHub repository](https://github.com/0glabs/0g-ai-sdk-python/tree/main/examples):
+Check out complete examples in our [GitHub repository](https://github.com/0glabs/nebula-sdk-python/tree/main/examples):
 
-- [Basic Usage](https://github.com/0glabs/0g-ai-sdk-python/blob/main/examples/basic_usage.py)
-- [Streaming Chat](https://github.com/0glabs/0g-ai-sdk-python/blob/main/examples/streaming_chat.py)
-- [Advanced Memory](https://github.com/0glabs/0g-ai-sdk-python/blob/main/examples/advanced_memory.py)
-- [Multi-Agent System](https://github.com/0glabs/0g-ai-sdk-python/blob/main/examples/multi_agent.py)
-- [Web Integration](https://github.com/0glabs/0g-ai-sdk-python/blob/main/examples/web_integration.py)
+- [Basic Usage](https://github.com/0glabs/nebula-sdk-python/blob/main/examples/basic_usage.py)
+- [Streaming Chat](https://github.com/0glabs/nebula-sdk-python/blob/main/examples/streaming_chat.py)
+- [Advanced Memory](https://github.com/0glabs/nebula-sdk-python/blob/main/examples/advanced_memory.py)
+- [Multi-Agent System](https://github.com/0glabs/nebula-sdk-python/blob/main/examples/multi_agent.py)
+- [Web Integration](https://github.com/0glabs/nebula-sdk-python/blob/main/examples/web_integration.py)
 
 ## Community and Support
 
 - **Documentation**: [https://docs.0g.ai](https://docs.0g.ai)
-- **GitHub**: [https://github.com/0glabs/0g-ai-sdk-python](https://github.com/0glabs/0g-ai-sdk-python)
+- **GitHub**: [https://github.com/0glabs/nebula-sdk-python](https://github.com/0glabs/nebula-sdk-python)
 - **Discord**: [https://discord.gg/0g](https://discord.gg/0g)
 - **Email**: support@0g.ai

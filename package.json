@@ -1,7 +1,7 @@
 {
-  "name": "0g-ai-sdk",
+  "name": "nebula-sdk",
   "version": "1.0.0",
-  "description": "TypeScript SDK for 0G AI with Chat and Memory capabilities",
+  "description": "TypeScript SDK for Nebula AI with Chat and Memory capabilities",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
@@ -10,7 +10,7 @@
     "prepublishOnly": "npm run build"
   },
   "keywords": [
-    "0g",
+    "nebula",
     "ai",
     "sdk",
     "chat",

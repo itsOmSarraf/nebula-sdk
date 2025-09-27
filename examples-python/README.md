@@ -1,12 +1,12 @@
-# 0G AI SDK Python Examples
+# Nebula SDK Python Examples
 
-This directory contains comprehensive examples demonstrating the capabilities of the 0G AI SDK Python library.
+This directory contains comprehensive examples demonstrating the capabilities of the Nebula SDK Python library.
 
 ## Prerequisites
 
 1. **Install the SDK**:
    ```bash
-   pip install zg-ai-sdk
+   pip install nebula-sdk
    ```
 
 2. **Set up environment variables**:
@@ -160,7 +160,7 @@ await agent.load_conversation('session_1')
 All examples include proper error handling:
 
 ```python
-from zg_ai_sdk import SDKError
+from nebula_sdk import SDKError
 
 try:
     response = await agent.ask('Hello')
@@ -260,6 +260,6 @@ print(f"Memory usage: {stats}")
 ## Support
 
 - **Documentation**: [https://docs.0g.ai](https://docs.0g.ai)
-- **GitHub Issues**: [https://github.com/0glabs/0g-ai-sdk-python/issues](https://github.com/0glabs/0g-ai-sdk-python/issues)
+- **GitHub Issues**: [https://github.com/0glabs/nebula-sdk-python/issues](https://github.com/0glabs/nebula-sdk-python/issues)
 - **Discord**: [https://discord.gg/0g](https://discord.gg/0g)
 - **Email**: support@0g.ai

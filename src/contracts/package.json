@@ -1,7 +1,7 @@
 {
-  "name": "0g-agent-contracts",
+  "name": "nebula-agent-contracts",
   "version": "1.0.0",
-  "description": "Smart contracts for 0G AI Agent SDK - On-chain agent identity and token deployment",
+  "description": "Smart contracts for Nebula AI Agent SDK - On-chain agent identity and token deployment",
   "main": "index.js",
   "scripts": {
     "compile": "hardhat compile",
@@ -22,7 +22,7 @@
   "keywords": [
     "solidity",
     "smart-contracts",
-    "0g",
+    "nebula",
     "ai",
     "agent",
     "erc20",
@@ -66,10 +66,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/0glabs/0g-agentic-sdk"
+    "url": "https://github.com/0glabs/nebula-sdk"
   },
   "bugs": {
-    "url": "https://github.com/0glabs/0g-agentic-sdk/issues"
+    "url": "https://github.com/0glabs/nebula-sdk/issues"
   },
-  "homepage": "https://github.com/0glabs/0g-agentic-sdk#readme"
+  "homepage": "https://github.com/0glabs/nebula-sdk#readme"
 }

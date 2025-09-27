@@ -1,5 +1,5 @@
 """
-Streaming chat example for the 0G AI SDK Python library.
+Streaming chat example for the Nebula SDK Python library.
 
 This example demonstrates:
 - Real-time streaming responses
@@ -11,7 +11,7 @@ This example demonstrates:
 import asyncio
 import os
 import time
-from zg_ai_sdk import create_agent, SDKError
+from nebula_sdk import create_agent, SDKError
 
 class StreamingDemo:
     def __init__(self):

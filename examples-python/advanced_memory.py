@@ -1,5 +1,5 @@
 """
-Advanced memory usage example for the 0G AI SDK Python library.
+Advanced memory usage example for the Nebula SDK Python library.
 
 This example demonstrates:
 - Persistent memory storage and retrieval
@@ -14,7 +14,7 @@ import os
 import json
 from datetime import datetime, timedelta
 from typing import Dict, List, Any
-from zg_ai_sdk import create_agent
+from nebula_sdk import create_agent
 
 class AdvancedMemoryDemo:
     def __init__(self):

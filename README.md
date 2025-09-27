@@ -1,6 +1,6 @@
-# 0G AI SDK
+# Nebula SDK
 
-A TypeScript SDK for building AI agents with 0G Network's compute and storage infrastructure.
+A TypeScript SDK for building AI agents with Nebula Network's compute and storage infrastructure.
 
 ## Features
 
@@ -13,13 +13,13 @@ A TypeScript SDK for building AI agents with 0G Network's compute and storage in
 ## Installation
 
 ```bash
-npm install 0g-ai-sdk
+npm install nebula-sdk
 ```
 
 ## Quick Start
 
 ```typescript
-import { createAgent } from '0g-ai-sdk';
+import { createAgent } from 'nebula-sdk';
 
 // Create and initialize an agent
 const agent = await createAgent({
@@ -50,7 +50,7 @@ console.log(name); // "Om"
 ### Manual Agent Creation
 
 ```typescript
-import { Agent, createZGComputeNetworkBroker, ZGStorageClientImpl } from '0g-ai-sdk';
+import { Agent, createZGComputeNetworkBroker, ZGStorageClientImpl } from 'nebula-sdk';
 import { ethers } from 'ethers';
 
 // Setup wallet and providers
