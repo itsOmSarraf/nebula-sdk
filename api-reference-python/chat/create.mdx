@@ -1,0 +1,301 @@
+# Create Chat
+
+Create a new chat instance to interact with AI models using Python.
+
+## Constructor
+
+```python
+Chat(broker: ZGComputeBroker, provider_address: str, temperature: float = 0.7, max_tokens: int = 1000)
+```
+
+### Parameters
+
+<ParamField path="broker" type="ZGComputeBroker" required>
+  The compute broker instance for connecting to the 0G network
+</ParamField>
+
+<ParamField path="provider_address" type="str" required>
+  The provider address on the 0G network for the AI model
+</ParamField>
+
+<ParamField path="temperature" type="float" default="0.7">
+  Controls randomness in responses (0.0-2.0)
+</ParamField>
+
+<ParamField path="max_tokens" type="int" default="1000">
+  Maximum number of tokens in the response
+</ParamField>
+
+## Response
+
+Returns a `Chat` instance that can be used to send messages and stream responses.
+
+## Example
+
+<CodeGroup>
+
+```python Basic Usage
+import asyncio
+from zg_ai_sdk import create_agent
+
+async def main():
+    agent = await create_agent({
+        'name': 'My Assistant',
+        'provider_address': '0xf07240Efa67755B5311bc75784a061eDB47165Dd',  # llama-3.3-70b-instruct
+        'memory_bucket': 'my-agent-memory',
+        'private_key': 'your-private-key',
+        'max_tokens': 2000,
+        'temperature': 0.8
+    })
+    
+    response = await agent.ask('Hello, how are you?')
+    print(response)
+
+asyncio.run(main())
+```
+
+```python Advanced Reasoning Model
+import asyncio
+from zg_ai_sdk import create_agent
+
+async def main():
+    agent = await create_agent({
+        'name': 'Reasoning Assistant',
+        'provider_address': '0x3feE5a4dd5FDb8a32dDA97Bed899830605dBD9D3',  # deepseek-r1-70b
+        'memory_bucket': 'reasoning-memory',
+        'private_key': 'your-private-key',
+        'max_tokens': 1500,
+        'temperature': 0.3
+    })
+    
+    response = await agent.ask('Solve this complex problem step by step')
+    print(response)
+
+asyncio.run(main())
+```
+
+```python Custom Configuration
+import asyncio
+from zg_ai_sdk import create_agent
+
+async def main():
+    agent = await create_agent({
+        'name': 'Custom Assistant',
+        'provider_address': '0xf07240Efa67755B5311bc75784a061eDB47165Dd',
+        'memory_bucket': 'custom-memory',
+        'private_key': 'your-private-key',
+        'rpc_url': 'https://custom-rpc.0g.ai',
+        'indexer_rpc': 'https://custom-indexer.0g.ai',
+        'kv_rpc': 'https://custom-kv.0g.ai',
+        'max_ephemeral_messages': 100,
+        'temperature': 0.5,
+        'max_tokens': 500
+    })
+    
+    response = await agent.ask('Tell me about Python')
+    print(response)
+
+asyncio.run(main())
+```
+
+```python Direct Chat Usage
+import asyncio
+from zg_ai_sdk import Chat, ZGComputeBroker, create_zg_compute_network_broker
+
+async def main():
+    # Create broker and chat directly
+    broker = create_zg_compute_network_broker('https://evmrpc-testnet.0g.ai')
+    chat = Chat(
+        broker=broker,
+        provider_address='0xf07240Efa67755B5311bc75784a061eDB47165Dd',
+        temperature=0.7,
+        max_tokens=1000
+    )
+    
+    # Simple question
+    response = await chat.ask('What is Python?')
+    print(response)
+
+asyncio.run(main())
+```
+
+</CodeGroup>
+
+## Available Models
+
+The 0G AI SDK connects to models running on the 0G decentralized compute network:
+
+| Model | Provider Address | Description | Verification |
+|-------|------------------|-------------|--------------|
+| `llama-3.3-70b-instruct` | `0xf07240Efa67755B5311bc75784a061eDB47165Dd` | State-of-the-art 70B parameter model for general AI tasks | TEE (TeeML) |
+| `deepseek-r1-70b` | `0x3feE5a4dd5FDb8a32dDA97Bed899830605dBD9D3` | Advanced reasoning model optimized for complex problem solving | TEE (TeeML) |
+
+## Methods
+
+### ask()
+
+Send a simple question to the AI model.
+
+```python
+async def ask(self, question: str, system_prompt: Optional[str] = None) -> str
+```
+
+**Parameters:**
+- `question` (str): The question to ask the AI
+- `system_prompt` (Optional[str]): Optional system prompt to set context
+
+**Returns:** `str` - The AI's response
+
+**Example:**
+```python
+response = await chat.ask('What is machine learning?')
+print(response)
+```
+
+### chat_completion()
+
+Send a structured chat completion request.
+
+```python
+async def chat_completion(self, messages: List[ChatMessage]) -> ChatCompletionResponse
+```
+
+**Parameters:**
+- `messages` (List[ChatMessage]): List of chat messages
+
+**Returns:** `ChatCompletionResponse` - Structured response with usage info
+
+**Example:**
+```python
+from zg_ai_sdk import ChatMessage
+
+messages = [
+    ChatMessage(role='system', content='You are a helpful assistant'),
+    ChatMessage(role='user', content='Explain quantum computing')
+]
+
+response = await chat.chat_completion(messages)
+print(response.choices[0].message.content)
+```
+
+### stream_chat_completion()
+
+Stream responses for real-time chat.
+
+```python
+async def stream_chat_completion(
+    self, 
+    messages: List[ChatMessage], 
+    on_chunk: callable
+) -> str
+```
+
+**Parameters:**
+- `messages` (List[ChatMessage]): List of chat messages
+- `on_chunk` (callable): Callback function for each chunk
+
+**Returns:** `str` - Complete response text
+
+**Example:**
+```python
+def handle_chunk(chunk: str):
+    print(chunk, end='', flush=True)
+
+messages = [ChatMessage(role='user', content='Tell me a story')]
+full_response = await chat.stream_chat_completion(messages, handle_chunk)
+```
+
+### get_service_info()
+
+Get information about the AI service.
+
+```python
+async def get_service_info(self) -> ServiceMetadata
+```
+
+**Returns:** `ServiceMetadata` - Service information including endpoint and model
+
+**Example:**
+```python
+info = await chat.get_service_info()
+print(f"Model: {info.model}, Endpoint: {info.endpoint}")
+```
+
+## Configuration Methods
+
+### set_temperature()
+
+Update the temperature setting.
+
+```python
+def set_temperature(self, temperature: float) -> None
+```
+
+**Parameters:**
+- `temperature` (float): New temperature value (0.0-2.0)
+
+**Example:**
+```python
+chat.set_temperature(0.9)  # More creative responses
+```
+
+### set_max_tokens()
+
+Update the maximum tokens setting.
+
+```python
+def set_max_tokens(self, max_tokens: int) -> None
+```
+
+**Parameters:**
+- `max_tokens` (int): New maximum tokens value
+
+**Example:**
+```python
+chat.set_max_tokens(2000)  # Allow longer responses
+```
+
+### get_config()
+
+Get current configuration.
+
+```python
+def get_config(self) -> Dict[str, Any]
+```
+
+**Returns:** `Dict[str, Any]` - Current configuration settings
+
+**Example:**
+```python
+config = chat.get_config()
+print(f"Temperature: {config['temperature']}, Max Tokens: {config['max_tokens']}")
+```
+
+## Error Handling
+
+The constructor and methods will raise exceptions if:
+- Invalid provider address is provided
+- Network connection fails
+- Invalid configuration parameters are passed
+
+```python
+from zg_ai_sdk import SDKError
+
+try:
+    chat = Chat(
+        broker=broker,
+        provider_address='invalid-address',
+        temperature=0.7
+    )
+    response = await chat.ask('Hello')
+except SDKError as error:
+    print(f'Failed to create chat: {error.message} (Code: {error.code})')
+except Exception as error:
+    print(f'Unexpected error: {error}')
+```
+
+## Next Steps
+
+- [Stream Responses](/api-reference-python/chat/stream)
+- [View Chat History](/api-reference-python/chat/history)
+- [Memory Integration](/api-reference-python/memory/store)

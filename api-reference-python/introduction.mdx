@@ -1,0 +1,232 @@
+# Python API Reference
+
+Welcome to the 0G AI SDK Python API Reference. This section provides detailed documentation for all classes, methods, and types available in the Python SDK.
+
+## Overview
+
+The 0G AI SDK Python library is organized into several main modules:
+
+<CardGroup cols={2}>
+  <Card
+    title="Chat"
+    icon="comments"
+    href="/api-reference-python/chat/create"
+  >
+    Conversational AI with streaming support
+  </Card>
+  <Card
+    title="Memory"
+    icon="brain"
+    href="/api-reference-python/memory/store"
+  >
+    Persistent storage for AI context and data
+  </Card>
+  <Card
+    title="Agent"
+    icon="robot"
+    href="/api-reference-python/agent/create"
+  >
+    Autonomous AI agents with tool integration
+  </Card>
+  <Card
+    title="Storage"
+    icon="database"
+    href="/essentials/storage"
+  >
+    Decentralized storage on the 0G network
+  </Card>
+</CardGroup>
+
+## Quick Reference
+
+### Core Classes
+
+| Class | Description | Import |
+|-------|-------------|---------|
+| `Chat` | Main chat interface | `from zg_ai_sdk import Chat` |
+| `Memory` | Memory management | `from zg_ai_sdk import Memory` |
+| `Agent` | AI agent framework | `from zg_ai_sdk import Agent` |
+| `ZGStorageClient` | Storage client | `from zg_ai_sdk import ZGStorageClient` |
+| `ZGComputeBroker` | Compute broker | `from zg_ai_sdk import ZGComputeBroker` |
+
+### Common Types
+
+```python
+from dataclasses import dataclass
+from datetime import datetime
+from typing import Optional, Dict, Any, List, Literal
+
+# Chat message structure
+@dataclass
+class ChatMessage:
+    role: Literal['user', 'assistant', 'system']
+    content: str
+    timestamp: Optional[datetime] = None
+
+# Chat response
+@dataclass
+class ChatResponse:
+    content: str
+    usage: Dict[str, int]  # {'prompt_tokens': int, 'completion_tokens': int, 'total_tokens': int}
+    model: str
+    finish_reason: Literal['stop', 'length', 'content_filter']
+
+# Memory entry
+@dataclass
+class MemoryEntry:
+    key: str
+    value: Any
+    timestamp: datetime
+    metadata: Optional[Dict[str, Any]] = None
+
+# Agent tool definition
+@dataclass
+class AgentTool:
+    name: str
+    description: str
+    parameters: Optional[Dict[str, Any]] = None
+    execute: callable = None
+```
+
+## Installation
+
+Install the Python SDK using pip:
+
+```bash
+pip install zg-ai-sdk
+```
+
+## Authentication
+
+All API calls require authentication. Set your API key when initializing SDK components:
+
+```python
+from zg_ai_sdk import Chat, Memory, Agent
+import os
+
+# Option 1: Pass API key directly
+chat = Chat(api_key='your-api-key-here')
+
+# Option 2: Use environment variable
+os.environ['ZG_API_KEY'] = 'your-api-key-here'
+memory = Memory()  # Will use ZG_API_KEY automatically
+```
+
+## Error Handling
+
+The SDK uses structured exception classes for consistent error handling:
+
+```python
+class SDKError(Exception):
+    def __init__(self, message: str, code: str, status_code: Optional[int] = None, details: Any = None):
+        super().__init__(message)
+        self.code = code
+        self.status_code = status_code
+        self.details = details
+
+# Common error codes
+class ErrorCodes:
+    INVALID_API_KEY = 'INVALID_API_KEY'
+    RATE_LIMIT = 'RATE_LIMIT'
+    NETWORK_ERROR = 'NETWORK_ERROR'
+    INVALID_INPUT = 'INVALID_INPUT'
+    STORAGE_ERROR = 'STORAGE_ERROR'
+```
+
+## Rate Limits
+
+The SDK respects the following rate limits:
+
+| Endpoint | Limit | Window |
+|----------|-------|---------|
+| Chat API | 100 requests | per minute |
+| Memory API | 1000 requests | per minute |
+| Storage API | 50 requests | per minute |
+| Agent API | 20 requests | per minute |
+
+## Pagination
+
+For endpoints that return large datasets, use pagination:
+
+```python
+# Memory search with pagination
+results = await memory.search(
+    query='important data',
+    limit=50,
+    offset=0
+)
+
+# Check if more results available
+if results.has_more:
+    next_page = await memory.search(
+        query='important data',
+        limit=50,
+        offset=50
+    )
+```
+
+## Async/Await Support
+
+The Python SDK is built with async/await support for better performance:
+
+```python
+import asyncio
+from zg_ai_sdk import create_agent
+
+async def main():
+    agent = await create_agent({
+        'name': 'My Assistant',
+        'provider_address': '0xf07240Efa67755B5311bc75784a061eDB47165Dd',
+        'memory_bucket': 'my-agent-memory',
+        'private_key': 'your-private-key'
+    })
+    
+    response = await agent.ask('Hello!')
+    print(response)
+
+# Run the async function
+asyncio.run(main())
+```
+
+## Type Hints
+
+The SDK provides comprehensive type hints for better IDE support:
+
+```python
+from typing import Optional, List, Dict, Any
+from zg_ai_sdk import Agent, ChatMessage
+
+async def chat_with_agent(agent: Agent, message: str) -> str:
+    response: str = await agent.ask(message)
+    return response
+
+async def get_messages(agent: Agent) -> List[ChatMessage]:
+    messages: List[ChatMessage] = agent.memory.get_messages()
+    return messages
+```
+
+## Configuration
+
+Configure the SDK using environment variables or configuration objects:
+
+```python
+# Using environment variables
+import os
+os.environ['ZG_RPC_URL'] = 'https://evmrpc-testnet.0g.ai'
+os.environ['ZG_INDEXER_RPC'] = 'https://indexer-storage-testnet-turbo.0g.ai'
+os.environ['ZG_KV_RPC'] = 'http://3.101.147.150:6789'
+
+# Using configuration object
+config = {
+    'rpc_url': 'https://evmrpc-testnet.0g.ai',
+    'indexer_rpc': 'https://indexer-storage-testnet-turbo.0g.ai',
+    'kv_rpc': 'http://3.101.147.150:6789'
+}
+```
+
+## Support
+
+- **Documentation**: [https://docs.0g.ai](https://docs.0g.ai)
+- **GitHub Issues**: [https://github.com/0glabs/0g-ai-sdk-python/issues](https://github.com/0glabs/0g-ai-sdk-python/issues)
+- **Discord**: [https://discord.gg/0g](https://discord.gg/0g)
+- **Email**: support@0g.ai

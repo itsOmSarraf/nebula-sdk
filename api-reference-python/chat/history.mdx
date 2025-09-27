@@ -1,0 +1,377 @@
+# Chat History
+
+Manage and retrieve conversation history using the Memory system.
+
+## Overview
+
+Chat history in the 0G AI SDK is managed through the Memory system, which provides both ephemeral (temporary) and persistent storage for conversation messages. This allows you to maintain context across sessions and build sophisticated conversational AI applications.
+
+## Memory Integration
+
+The Chat class works seamlessly with the Memory class to store and retrieve conversation history:
+
+```python
+from zg_ai_sdk import Agent, ChatMessage
+
+# Agent automatically manages chat history through memory
+agent = await create_agent({
+    'name': 'History Assistant',
+    'provider_address': '0xf07240Efa67755B5311bc75784a061eDB47165Dd',
+    'memory_bucket': 'chat-history',
+    'private_key': 'your-private-key'
+})
+```
+
+## Methods
+
+### get_messages()
+
+Retrieve current conversation messages from ephemeral memory.
+
+```python
+def get_messages(self) -> List[ChatMessage]
+```
+
+**Returns:** `List[ChatMessage]` - List of messages in the current conversation
+
+### add_message()
+
+Add a message to the conversation history.
+
+```python
+def add_message(self, message: ChatMessage) -> None
+```
+
+**Parameters:**
+- `message` (ChatMessage): The message to add to history
+
+### clear_ephemeral_messages()
+
+Clear the current conversation from ephemeral memory.
+
+```python
+def clear_ephemeral_messages(self) -> None
+```
+
+## Examples
+
+<CodeGroup>
+
+```python Basic History Management
+import asyncio
+from zg_ai_sdk import create_agent, ChatMessage
+
+async def main():
+    agent = await create_agent({
+        'name': 'History Assistant',
+        'provider_address': '0xf07240Efa67755B5311bc75784a061eDB47165Dd',
+        'memory_bucket': 'history-demo',
+        'private_key': 'your-private-key'
+    })
+    
+    # Have a conversation
+    await agent.ask('Hello, my name is Alice')
+    await agent.ask('What is my name?')
+    
+    # Get conversation history
+    messages = agent.memory.get_messages()
+    print(f"Conversation has {len(messages)} messages:")
+    
+    for msg in messages:
+        print(f"{msg.role}: {msg.content}")
+
+asyncio.run(main())
+```
+
+```python Persistent Conversation Storage
+import asyncio
+from zg_ai_sdk import create_agent
+
+async def main():
+    agent = await create_agent({
+        'name': 'Persistent Assistant',
+        'provider_address': '0xf07240Efa67755B5311bc75784a061eDB47165Dd',
+        'memory_bucket': 'persistent-chat',
+        'private_key': 'your-private-key'
+    })
+    
+    # Have a conversation
+    await agent.ask('Remember that I like Python programming')
+    await agent.ask('What are my interests?')
+    
+    # Save the conversation
+    conversation_id = await agent.save_conversation('session_1')
+    print(f"Saved conversation: {conversation_id}")
+    
+    # Clear current conversation
+    agent.clear_conversation()
+    
+    # Load the saved conversation
+    await agent.load_conversation('session_1')
+    
+    # Continue the conversation with context
+    response = await agent.ask('Tell me more about Python')
+    print(response)
+
+asyncio.run(main())
+```
+
+```python Multiple Conversation Sessions
+import asyncio
+from zg_ai_sdk import create_agent
+
+async def main():
+    agent = await create_agent({
+        'name': 'Multi-Session Assistant',
+        'provider_address': '0xf07240Efa67755B5311bc75784a061eDB47165Dd',
+        'memory_bucket': 'multi-session',
+        'private_key': 'your-private-key'
+    })
+    
+    # Session 1: Technical discussion
+    agent.set_system_prompt('You are a technical expert.')
+    await agent.ask('Explain machine learning algorithms')
+    session1_id = await agent.save_conversation('tech_session')
+    
+    # Session 2: Creative writing
+    agent.clear_conversation()
+    agent.set_system_prompt('You are a creative writer.')
+    await agent.ask('Write a short story about robots')
+    session2_id = await agent.save_conversation('creative_session')
+    
+    # Switch back to technical session
+    await agent.load_conversation('tech_session')
+    response = await agent.ask('What about deep learning specifically?')
+    print(f"Technical response: {response}")
+    
+    # Switch to creative session
+    await agent.load_conversation('creative_session')
+    response = await agent.ask('Continue the robot story')
+    print(f"Creative response: {response}")
+
+asyncio.run(main())
+```
+
+```python Conversation Analysis
+import asyncio
+from zg_ai_sdk import create_agent
+from datetime import datetime
+
+async def main():
+    agent = await create_agent({
+        'name': 'Analysis Assistant',
+        'provider_address': '0xf07240Efa67755B5311bc75784a061eDB47165Dd',
+        'memory_bucket': 'analysis-chat',
+        'private_key': 'your-private-key'
+    })
+    
+    # Have a conversation
+    await agent.ask('I need help with Python')
+    await agent.ask('Specifically with async programming')
+    await agent.ask('Can you show me examples?')
+    
+    # Analyze conversation
+    messages = agent.memory.get_messages()
+    
+    user_messages = [msg for msg in messages if msg.role == 'user']
+    assistant_messages = [msg for msg in messages if msg.role == 'assistant']
+    
+    print(f"Conversation Analysis:")
+    print(f"- Total messages: {len(messages)}")
+    print(f"- User messages: {len(user_messages)}")
+    print(f"- Assistant messages: {len(assistant_messages)}")
+    
+    # Calculate conversation duration
+    if messages:
+        start_time = messages[0].timestamp
+        end_time = messages[-1].timestamp
+        duration = end_time - start_time
+        print(f"- Duration: {duration}")
+    
+    # Word count analysis
+    total_words = sum(len(msg.content.split()) for msg in messages)
+    print(f"- Total words: {total_words}")
+
+asyncio.run(main())
+```
+
+</CodeGroup>
+
+## Agent History Methods
+
+### save_conversation()
+
+Save the current conversation to persistent storage.
+
+```python
+async def save_conversation(self, conversation_id: Optional[str] = None) -> str
+```
+
+**Parameters:**
+- `conversation_id` (Optional[str]): Custom ID for the conversation. If not provided, a timestamp-based ID is generated.
+
+**Returns:** `str` - The conversation ID
+
+**Example:**
+```python
+# Auto-generated ID
+conv_id = await agent.save_conversation()
+
+# Custom ID
+conv_id = await agent.save_conversation('important_discussion')
+```
+
+### load_conversation()
+
+Load a previously saved conversation.
+
+```python
+async def load_conversation(self, conversation_id: str) -> None
+```
+
+**Parameters:**
+- `conversation_id` (str): The ID of the conversation to load
+
+**Example:**
+```python
+await agent.load_conversation('important_discussion')
+```
+
+### clear_conversation()
+
+Clear the current conversation from ephemeral memory.
+
+```python
+def clear_conversation(self) -> None
+```
+
+**Example:**
+```python
+agent.clear_conversation()  # Start fresh
+```
+
+## Memory Statistics
+
+Get detailed information about memory usage:
+
+```python
+stats = agent.memory.get_stats()
+print(f"Ephemeral messages: {stats['ephemeral_messages']}")
+print(f"Max ephemeral messages: {stats['max_ephemeral_messages']}")
+```
+
+## Advanced History Management
+
+### Custom Message Filtering
+
+```python
+def get_user_questions(agent):
+    messages = agent.memory.get_messages()
+    questions = []
+    
+    for msg in messages:
+        if msg.role == 'user' and '?' in msg.content:
+            questions.append(msg.content)
+    
+    return questions
+
+# Get all user questions from the conversation
+questions = get_user_questions(agent)
+print("User asked:", questions)
+```
+
+### Conversation Context Building
+
+```python
+def build_context_summary(agent, max_messages=10):
+    messages = agent.memory.get_messages()
+    recent_messages = messages[-max_messages:] if len(messages) > max_messages else messages
+    
+    context = "Recent conversation:\n"
+    for msg in recent_messages:
+        context += f"{msg.role}: {msg.content[:100]}...\n"
+    
+    return context
+
+# Get conversation summary
+summary = build_context_summary(agent)
+print(summary)
+```
+
+### Message Search
+
+```python
+def search_messages(agent, keyword):
+    messages = agent.memory.get_messages()
+    matching_messages = []
+    
+    for msg in messages:
+        if keyword.lower() in msg.content.lower():
+            matching_messages.append(msg)
+    
+    return matching_messages
+
+# Find messages containing specific keywords
+python_messages = search_messages(agent, 'python')
+print(f"Found {len(python_messages)} messages about Python")
+```
+
+## Configuration
+
+### Max Ephemeral Messages
+
+Control how many messages are kept in ephemeral memory:
+
+```python
+agent = await create_agent({
+    'name': 'Limited History Assistant',
+    'provider_address': '0xf07240Efa67755B5311bc75784a061eDB47165Dd',
+    'memory_bucket': 'limited-history',
+    'private_key': 'your-private-key',
+    'max_ephemeral_messages': 20  # Keep only last 20 messages
+})
+```
+
+### Memory Bucket Organization
+
+Organize conversations using different memory buckets:
+
+```python
+# Different agents for different purposes
+support_agent = await create_agent({
+    'memory_bucket': 'customer-support',
+    # ... other config
+})
+
+research_agent = await create_agent({
+    'memory_bucket': 'research-assistant', 
+    # ... other config
+})
+```
+
+## Error Handling
+
+```python
+from zg_ai_sdk import SDKError
+
+try:
+    await agent.load_conversation('non_existent_conversation')
+except SDKError as e:
+    if e.code == 'STORAGE_ERROR':
+        print("Conversation not found")
+    else:
+        print(f"Error loading conversation: {e.message}")
+```
+
+## Best Practices
+
+1. **Regular Cleanup**: Clear ephemeral messages periodically for long-running applications
+2. **Meaningful IDs**: Use descriptive conversation IDs for easier management
+3. **Context Limits**: Be mindful of token limits when using long conversation histories
+4. **Backup Important Conversations**: Save critical conversations to persistent storage
+
+## Next Steps
+
+- [Memory Storage](/api-reference-python/memory/store)
+- [Memory Search](/api-reference-python/memory/search)
+- [Agent Creation](/api-reference-python/agent/create)

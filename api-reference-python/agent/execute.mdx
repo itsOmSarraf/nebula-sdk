@@ -1,0 +1,939 @@
+# Agent Execution
+
+Execute agent tasks and manage agent lifecycle in Python applications.
+
+## Overview
+
+Agent execution involves running agents in various contexts, from simple one-off tasks to long-running services. The 0G AI SDK provides flexible execution patterns to suit different application needs.
+
+## Execution Patterns
+
+### Simple Execution
+
+Basic agent execution for straightforward tasks:
+
+```python
+import asyncio
+from zg_ai_sdk import create_agent
+
+async def simple_execution():
+    agent = await create_agent({
+        'name': 'Task Agent',
+        'provider_address': '0xf07240Efa67755B5311bc75784a061eDB47165Dd',
+        'memory_bucket': 'task-memory',
+        'private_key': 'your-private-key'
+    })
+    
+    await agent.init()
+    
+    # Execute single task
+    result = await agent.ask('Explain quantum computing in simple terms')
+    return result
+
+# Run the task
+result = asyncio.run(simple_execution())
+print(result)
+```
+
+### Batch Execution
+
+Execute multiple tasks efficiently:
+
+```python
+async def batch_execution(tasks):
+    agent = await create_agent({
+        'name': 'Batch Agent',
+        'provider_address': '0xf07240Efa67755B5311bc75784a061eDB47165Dd',
+        'memory_bucket': 'batch-memory',
+        'private_key': 'your-private-key'
+    })
+    
+    await agent.init()
+    
+    results = []
+    for i, task in enumerate(tasks):
+        print(f"Processing task {i+1}/{len(tasks)}: {task[:50]}...")
+        result = await agent.ask(task)
+        results.append({'task': task, 'result': result})
+    
+    return results
+```
+
+### Streaming Execution
+
+Real-time execution with streaming responses:
+
+```python
+async def streaming_execution(prompt):
+    agent = await create_agent({
+        'name': 'Streaming Agent',
+        'provider_address': '0xf07240Efa67755B5311bc75784a061eDB47165Dd',
+        'memory_bucket': 'streaming-memory',
+        'private_key': 'your-private-key'
+    })
+    
+    await agent.init()
+    
+    def handle_chunk(chunk: str):
+        print(chunk, end='', flush=True)
+    
+    result = await agent.stream_chat(prompt, handle_chunk)
+    return result
+```
+
+## Examples
+
+<CodeGroup>
+
+```python Task Automation
+import asyncio
+from datetime import datetime
+from zg_ai_sdk import create_agent
+
+class TaskAutomator:
+    def __init__(self, agent_config):
+        self.agent_config = agent_config
+        self.agent = None
+        self.task_history = []
+    
+    async def initialize(self):
+        """Initialize the agent"""
+        self.agent = await create_agent(self.agent_config)
+        await self.agent.init()
+        
+        # Set up system prompt for task automation
+        self.agent.set_system_prompt('''
+        You are a task automation assistant. When given tasks:
+        1. Break down complex tasks into steps
+        2. Provide clear, actionable instructions
+        3. Estimate time requirements when possible
+        4. Identify potential issues or dependencies
+        ''')
+    
+    async def execute_task(self, task_description, context=None):
+        """Execute a single task"""
+        if not self.agent:
+            await self.initialize()
+        
+        # Add context if provided
+        full_prompt = task_description
+        if context:
+            full_prompt = f"Context: {context}\n\nTask: {task_description}"
+        
+        # Execute task
+        start_time = datetime.now()
+        result = await self.agent.chat_with_context(full_prompt)
+        end_time = datetime.now()
+        
+        # Record task execution
+        task_record = {
+            'task': task_description,
+            'context': context,
+            'result': result,
+            'start_time': start_time,
+            'end_time': end_time,
+            'duration': (end_time - start_time).total_seconds()
+        }
+        
+        self.task_history.append(task_record)
+        
+        # Store in agent memory
+        await self.agent.remember(
+            f'task_{len(self.task_history)}',
+            task_record
+        )
+        
+        return task_record
+    
+    async def execute_workflow(self, tasks):
+        """Execute a series of related tasks"""
+        if not self.agent:
+            await self.initialize()
+        
+        workflow_results = []
+        context = ""
+        
+        for i, task in enumerate(tasks):
+            print(f"Executing step {i+1}: {task}")
+            
+            # Use previous results as context
+            result = await self.execute_task(task, context)
+            workflow_results.append(result)
+            
+            # Build context for next task
+            context += f"Previous step result: {result['result'][:200]}...\n"
+        
+        return workflow_results
+    
+    def get_task_summary(self):
+        """Get summary of executed tasks"""
+        if not self.task_history:
+            return "No tasks executed yet."
+        
+        total_tasks = len(self.task_history)
+        total_time = sum(task['duration'] for task in self.task_history)
+        avg_time = total_time / total_tasks
+        
+        return {
+            'total_tasks': total_tasks,
+            'total_time': total_time,
+            'average_time': avg_time,
+            'recent_tasks': [task['task'] for task in self.task_history[-5:]]
+        }
+
+async def main():
+    config = {
+        'name': 'Task Automator',
+        'provider_address': '0xf07240Efa67755B5311bc75784a061eDB47165Dd',
+        'memory_bucket': 'task-automation',
+        'private_key': 'your-private-key'
+    }
+    
+    automator = TaskAutomator(config)
+    
+    # Execute single task
+    task_result = await automator.execute_task(
+        "Create a project plan for building a web application"
+    )
+    print("Task completed in", task_result['duration'], "seconds")
+    
+    # Execute workflow
+    workflow_tasks = [
+        "Define project requirements and scope",
+        "Design system architecture",
+        "Create development timeline",
+        "Identify potential risks and mitigation strategies"
+    ]
+    
+    workflow_results = await automator.execute_workflow(workflow_tasks)
+    
+    # Get summary
+    summary = automator.get_task_summary()
+    print("Workflow Summary:", summary)
+
+asyncio.run(main())
+```
+
+```python Long-Running Agent Service
+import asyncio
+from datetime import datetime, timedelta
+from zg_ai_sdk import create_agent
+
+class AgentService:
+    def __init__(self, agent_config):
+        self.agent_config = agent_config
+        self.agent = None
+        self.running = False
+        self.task_queue = asyncio.Queue()
+        self.results = {}
+        self.stats = {
+            'tasks_processed': 0,
+            'start_time': None,
+            'last_activity': None
+        }
+    
+    async def start(self):
+        """Start the agent service"""
+        if self.running:
+            return
+        
+        print("Starting agent service...")
+        self.agent = await create_agent(self.agent_config)
+        await self.agent.init()
+        
+        self.running = True
+        self.stats['start_time'] = datetime.now()
+        
+        # Start task processor
+        asyncio.create_task(self._process_tasks())
+        print("Agent service started successfully")
+    
+    async def stop(self):
+        """Stop the agent service"""
+        print("Stopping agent service...")
+        self.running = False
+        
+        # Wait for current tasks to complete
+        while not self.task_queue.empty():
+            await asyncio.sleep(0.1)
+        
+        print("Agent service stopped")
+    
+    async def submit_task(self, task_id, prompt, priority=0):
+        """Submit a task to the agent"""
+        if not self.running:
+            raise RuntimeError("Agent service is not running")
+        
+        task = {
+            'id': task_id,
+            'prompt': prompt,
+            'priority': priority,
+            'submitted_at': datetime.now()
+        }
+        
+        await self.task_queue.put(task)
+        return task_id
+    
+    async def get_result(self, task_id, timeout=30):
+        """Get result for a specific task"""
+        start_time = datetime.now()
+        
+        while datetime.now() - start_time < timedelta(seconds=timeout):
+            if task_id in self.results:
+                return self.results.pop(task_id)
+            await asyncio.sleep(0.1)
+        
+        raise TimeoutError(f"Task {task_id} did not complete within {timeout} seconds")
+    
+    async def _process_tasks(self):
+        """Process tasks from the queue"""
+        while self.running:
+            try:
+                # Get task from queue (wait up to 1 second)
+                task = await asyncio.wait_for(self.task_queue.get(), timeout=1.0)
+                
+                # Process task
+                await self._execute_task(task)
+                
+            except asyncio.TimeoutError:
+                # No tasks in queue, continue
+                continue
+            except Exception as e:
+                print(f"Error processing task: {e}")
+    
+    async def _execute_task(self, task):
+        """Execute a single task"""
+        try:
+            print(f"Processing task {task['id']}: {task['prompt'][:50]}...")
+            
+            start_time = datetime.now()
+            result = await self.agent.ask(task['prompt'])
+            end_time = datetime.now()
+            
+            # Store result
+            self.results[task['id']] = {
+                'result': result,
+                'start_time': start_time,
+                'end_time': end_time,
+                'duration': (end_time - start_time).total_seconds()
+            }
+            
+            # Update stats
+            self.stats['tasks_processed'] += 1
+            self.stats['last_activity'] = end_time
+            
+            print(f"Task {task['id']} completed in {(end_time - start_time).total_seconds():.2f}s")
+            
+        except Exception as e:
+            print(f"Error executing task {task['id']}: {e}")
+            self.results[task['id']] = {'error': str(e)}
+    
+    def get_stats(self):
+        """Get service statistics"""
+        uptime = None
+        if self.stats['start_time']:
+            uptime = (datetime.now() - self.stats['start_time']).total_seconds()
+        
+        return {
+            **self.stats,
+            'running': self.running,
+            'queue_size': self.task_queue.qsize(),
+            'pending_results': len(self.results),
+            'uptime_seconds': uptime
+        }
+
+async def main():
+    config = {
+        'name': 'Service Agent',
+        'provider_address': '0xf07240Efa67755B5311bc75784a061eDB47165Dd',
+        'memory_bucket': 'service-memory',
+        'private_key': 'your-private-key'
+    }
+    
+    service = AgentService(config)
+    
+    try:
+        # Start service
+        await service.start()
+        
+        # Submit multiple tasks
+        task_ids = []
+        tasks = [
+            "Explain machine learning",
+            "Write a Python function to sort a list",
+            "Describe the benefits of cloud computing",
+            "Create a simple HTML webpage structure"
+        ]
+        
+        for i, task in enumerate(tasks):
+            task_id = await service.submit_task(f"task_{i}", task)
+            task_ids.append(task_id)
+        
+        # Get results
+        for task_id in task_ids:
+            result = await service.get_result(task_id)
+            print(f"\nResult for {task_id}:")
+            print(result['result'][:200] + "...")
+        
+        # Show stats
+        stats = service.get_stats()
+        print(f"\nService Stats: {stats}")
+        
+    finally:
+        await service.stop()
+
+asyncio.run(main())
+```
+
+```python Parallel Agent Execution
+import asyncio
+from zg_ai_sdk import create_agent
+
+class ParallelAgentExecutor:
+    def __init__(self, num_agents=3):
+        self.num_agents = num_agents
+        self.agents = []
+        self.agent_configs = []
+    
+    async def initialize_agents(self, base_config):
+        """Initialize multiple agents for parallel execution"""
+        print(f"Initializing {self.num_agents} agents...")
+        
+        for i in range(self.num_agents):
+            config = {
+                **base_config,
+                'name': f"{base_config['name']} {i+1}",
+                'memory_bucket': f"{base_config['memory_bucket']}-{i+1}"
+            }
+            
+            agent = await create_agent(config)
+            await agent.init()
+            
+            self.agents.append(agent)
+            self.agent_configs.append(config)
+        
+        print(f"All {self.num_agents} agents initialized successfully")
+    
+    async def execute_parallel_tasks(self, tasks):
+        """Execute tasks in parallel across multiple agents"""
+        if len(self.agents) == 0:
+            raise RuntimeError("No agents initialized")
+        
+        # Create semaphore to limit concurrent executions
+        semaphore = asyncio.Semaphore(self.num_agents)
+        
+        async def execute_with_semaphore(task, task_id):
+            async with semaphore:
+                # Get next available agent (round-robin)
+                agent = self.agents[task_id % len(self.agents)]
+                
+                print(f"Agent {agent.name} executing task {task_id}")
+                start_time = asyncio.get_event_loop().time()
+                
+                result = await agent.ask(task)
+                
+                end_time = asyncio.get_event_loop().time()
+                duration = end_time - start_time
+                
+                return {
+                    'task_id': task_id,
+                    'task': task,
+                    'result': result,
+                    'agent': agent.name,
+                    'duration': duration
+                }
+        
+        # Execute all tasks in parallel
+        task_coroutines = [
+            execute_with_semaphore(task, i) 
+            for i, task in enumerate(tasks)
+        ]
+        
+        results = await asyncio.gather(*task_coroutines)
+        return results
+    
+    async def execute_with_load_balancing(self, tasks):
+        """Execute tasks with simple load balancing"""
+        if not self.agents:
+            raise RuntimeError("No agents initialized")
+        
+        # Track agent workload
+        agent_workload = {i: 0 for i in range(len(self.agents))}
+        results = []
+        
+        async def execute_task(task, task_id):
+            # Find agent with lowest workload
+            agent_idx = min(agent_workload.keys(), key=lambda k: agent_workload[k])
+            agent = self.agents[agent_idx]
+            
+            # Increment workload
+            agent_workload[agent_idx] += 1
+            
+            try:
+                print(f"Agent {agent.name} (load: {agent_workload[agent_idx]}) executing task {task_id}")
+                result = await agent.ask(task)
+                
+                return {
+                    'task_id': task_id,
+                    'task': task,
+                    'result': result,
+                    'agent': agent.name,
+                    'agent_load': agent_workload[agent_idx]
+                }
+            finally:
+                # Decrement workload
+                agent_workload[agent_idx] -= 1
+        
+        # Execute tasks
+        task_coroutines = [
+            execute_task(task, i) 
+            for i, task in enumerate(tasks)
+        ]
+        
+        results = await asyncio.gather(*task_coroutines)
+        return results
+    
+    def get_agent_stats(self):
+        """Get statistics for all agents"""
+        stats = []
+        for agent in self.agents:
+            agent_stats = agent.get_stats()
+            stats.append(agent_stats)
+        return stats
+
+async def main():
+    base_config = {
+        'name': 'Parallel Agent',
+        'provider_address': '0xf07240Efa67755B5311bc75784a061eDB47165Dd',
+        'memory_bucket': 'parallel-memory',
+        'private_key': 'your-private-key'
+    }
+    
+    executor = ParallelAgentExecutor(num_agents=3)
+    await executor.initialize_agents(base_config)
+    
+    # Define tasks
+    tasks = [
+        "Explain quantum computing",
+        "Write a Python sorting algorithm",
+        "Describe blockchain technology",
+        "Create a REST API design",
+        "Explain machine learning concepts",
+        "Design a database schema",
+        "Write JavaScript async/await examples",
+        "Describe microservices architecture"
+    ]
+    
+    print(f"\nExecuting {len(tasks)} tasks in parallel...")
+    
+    # Execute with parallel execution
+    start_time = asyncio.get_event_loop().time()
+    results = await executor.execute_parallel_tasks(tasks)
+    end_time = asyncio.get_event_loop().time()
+    
+    print(f"\nParallel execution completed in {end_time - start_time:.2f} seconds")
+    
+    # Show results summary
+    for result in results:
+        print(f"Task {result['task_id']} ({result['agent']}): {result['duration']:.2f}s")
+    
+    # Show agent stats
+    agent_stats = executor.get_agent_stats()
+    print(f"\nAgent Statistics:")
+    for i, stats in enumerate(agent_stats):
+        print(f"Agent {i+1}: {stats['memory']['ephemeral_messages']} messages")
+
+asyncio.run(main())
+```
+
+```python Error Handling and Resilience
+import asyncio
+from datetime import datetime
+from zg_ai_sdk import create_agent, SDKError
+
+class ResilientAgentExecutor:
+    def __init__(self, agent_config, max_retries=3, retry_delay=1.0):
+        self.agent_config = agent_config
+        self.max_retries = max_retries
+        self.retry_delay = retry_delay
+        self.agent = None
+        self.error_count = 0
+        self.success_count = 0
+    
+    async def initialize(self):
+        """Initialize agent with error handling"""
+        for attempt in range(self.max_retries):
+            try:
+                self.agent = await create_agent(self.agent_config)
+                await self.agent.init()
+                print("Agent initialized successfully")
+                return
+            except Exception as e:
+                print(f"Initialization attempt {attempt + 1} failed: {e}")
+                if attempt < self.max_retries - 1:
+                    await asyncio.sleep(self.retry_delay)
+                else:
+                    raise RuntimeError(f"Failed to initialize agent after {self.max_retries} attempts")
+    
+    async def execute_with_retry(self, task, task_id=None):
+        """Execute task with automatic retry on failure"""
+        if not self.agent:
+            await self.initialize()
+        
+        last_error = None
+        
+        for attempt in range(self.max_retries):
+            try:
+                print(f"Executing task (attempt {attempt + 1}): {task[:50]}...")
+                
+                result = await self.agent.ask(task)
+                self.success_count += 1
+                
+                return {
+                    'task_id': task_id,
+                    'task': task,
+                    'result': result,
+                    'attempts': attempt + 1,
+                    'success': True
+                }
+                
+            except SDKError as e:
+                last_error = e
+                self.error_count += 1
+                
+                print(f"SDK Error on attempt {attempt + 1}: {e.message}")
+                
+                # Don't retry on certain error types
+                if e.code in ['INVALID_API_KEY', 'INVALID_INPUT']:
+                    break
+                
+                if attempt < self.max_retries - 1:
+                    await asyncio.sleep(self.retry_delay * (2 ** attempt))  # Exponential backoff
+            
+            except Exception as e:
+                last_error = e
+                self.error_count += 1
+                
+                print(f"Unexpected error on attempt {attempt + 1}: {e}")
+                
+                if attempt < self.max_retries - 1:
+                    await asyncio.sleep(self.retry_delay)
+        
+        # All attempts failed
+        return {
+            'task_id': task_id,
+            'task': task,
+            'error': str(last_error),
+            'attempts': self.max_retries,
+            'success': False
+        }
+    
+    async def execute_batch_with_resilience(self, tasks):
+        """Execute batch of tasks with error resilience"""
+        results = []
+        
+        for i, task in enumerate(tasks):
+            try:
+                result = await self.execute_with_retry(task, f"task_{i}")
+                results.append(result)
+                
+                # Add delay between tasks to avoid rate limiting
+                await asyncio.sleep(0.1)
+                
+            except Exception as e:
+                print(f"Critical error executing task {i}: {e}")
+                results.append({
+                    'task_id': f"task_{i}",
+                    'task': task,
+                    'error': f"Critical error: {e}",
+                    'success': False
+                })
+        
+        return results
+    
+    async def health_check(self):
+        """Perform health check on the agent"""
+        try:
+            if not self.agent:
+                return {'healthy': False, 'reason': 'Agent not initialized'}
+            
+            # Simple test query
+            test_result = await self.agent.ask("Hello, are you working?")
+            
+            if test_result:
+                return {
+                    'healthy': True,
+                    'response_length': len(test_result),
+                    'timestamp': datetime.now().isoformat()
+                }
+            else:
+                return {'healthy': False, 'reason': 'Empty response'}
+                
+        except Exception as e:
+            return {'healthy': False, 'reason': str(e)}
+    
+    def get_execution_stats(self):
+        """Get execution statistics"""
+        total_executions = self.success_count + self.error_count
+        success_rate = (self.success_count / total_executions * 100) if total_executions > 0 else 0
+        
+        return {
+            'total_executions': total_executions,
+            'successful_executions': self.success_count,
+            'failed_executions': self.error_count,
+            'success_rate_percent': success_rate
+        }
+
+async def main():
+    config = {
+        'name': 'Resilient Agent',
+        'provider_address': '0xf07240Efa67755B5311bc75784a061eDB47165Dd',
+        'memory_bucket': 'resilient-memory',
+        'private_key': 'your-private-key'
+    }
+    
+    executor = ResilientAgentExecutor(config, max_retries=3, retry_delay=1.0)
+    
+    # Health check before execution
+    health = await executor.health_check()
+    print(f"Health check: {health}")
+    
+    if not health['healthy']:
+        print("Agent is not healthy, attempting initialization...")
+        await executor.initialize()
+    
+    # Execute tasks with resilience
+    tasks = [
+        "Explain artificial intelligence",
+        "Write a Python function",
+        "This is a very long task that might cause issues due to length limits or other problems that could occur during execution",
+        "Describe machine learning",
+        ""  # Empty task to test error handling
+    ]
+    
+    results = await executor.execute_batch_with_resilience(tasks)
+    
+    # Show results
+    print("\nExecution Results:")
+    for result in results:
+        status = "✓" if result['success'] else "✗"
+        print(f"{status} {result['task_id']}: {result.get('attempts', 0)} attempts")
+        if not result['success']:
+            print(f"  Error: {result['error']}")
+    
+    # Show statistics
+    stats = executor.get_execution_stats()
+    print(f"\nExecution Statistics: {stats}")
+
+asyncio.run(main())
+```
+
+</CodeGroup>
+
+## Execution Contexts
+
+### Web Application Integration
+
+```python
+from fastapi import FastAPI, BackgroundTasks
+from zg_ai_sdk import create_agent
+
+app = FastAPI()
+agent = None
+
+@app.on_event("startup")
+async def startup_event():
+    global agent
+    agent = await create_agent({
+        'name': 'Web Agent',
+        'provider_address': '0xf07240Efa67755B5311bc75784a061eDB47165Dd',
+        'memory_bucket': 'web-memory',
+        'private_key': 'your-private-key'
+    })
+    await agent.init()
+
+@app.post("/ask")
+async def ask_agent(question: str):
+    response = await agent.ask(question)
+    return {"response": response}
+
+@app.post("/ask-async")
+async def ask_agent_async(question: str, background_tasks: BackgroundTasks):
+    task_id = f"task_{datetime.now().timestamp()}"
+    background_tasks.add_task(process_async_task, task_id, question)
+    return {"task_id": task_id, "status": "processing"}
+
+async def process_async_task(task_id: str, question: str):
+    result = await agent.ask(question)
+    # Store result somewhere (database, cache, etc.)
+    await store_result(task_id, result)
+```
+
+### CLI Application
+
+```python
+import click
+import asyncio
+from zg_ai_sdk import create_agent
+
+@click.command()
+@click.option('--question', '-q', help='Question to ask the agent')
+@click.option('--stream', '-s', is_flag=True, help='Stream the response')
+@click.option('--config', '-c', help='Agent configuration file')
+def cli_agent(question, stream, config):
+    """CLI interface for 0G AI Agent"""
+    asyncio.run(run_cli_agent(question, stream, config))
+
+async def run_cli_agent(question, stream, config_file):
+    # Load configuration
+    config = load_config(config_file) if config_file else get_default_config()
+    
+    # Create and initialize agent
+    agent = await create_agent(config)
+    await agent.init()
+    
+    if stream:
+        def print_chunk(chunk):
+            print(chunk, end='', flush=True)
+        
+        await agent.stream_chat(question, print_chunk)
+        print()  # New line after streaming
+    else:
+        response = await agent.ask(question)
+        print(response)
+
+if __name__ == '__main__':
+    cli_agent()
+```
+
+## Performance Optimization
+
+### Connection Pooling
+
+```python
+class AgentPool:
+    def __init__(self, config, pool_size=5):
+        self.config = config
+        self.pool_size = pool_size
+        self.available_agents = asyncio.Queue()
+        self.busy_agents = set()
+    
+    async def initialize_pool(self):
+        """Initialize agent pool"""
+        for i in range(self.pool_size):
+            agent = await create_agent({
+                **self.config,
+                'name': f"{self.config['name']} Pool {i}",
+                'memory_bucket': f"{self.config['memory_bucket']}-pool-{i}"
+            })
+            await agent.init()
+            await self.available_agents.put(agent)
+    
+    async def get_agent(self):
+        """Get an available agent from the pool"""
+        agent = await self.available_agents.get()
+        self.busy_agents.add(agent)
+        return agent
+    
+    async def return_agent(self, agent):
+        """Return agent to the pool"""
+        self.busy_agents.discard(agent)
+        await self.available_agents.put(agent)
+```
+
+### Caching Results
+
+```python
+from functools import wraps
+import hashlib
+import json
+
+def cache_agent_results(cache_ttl=300):
+    """Decorator to cache agent results"""
+    cache = {}
+    
+    def decorator(func):
+        @wraps(func)
+        async def wrapper(*args, **kwargs):
+            # Create cache key
+            cache_key = hashlib.md5(
+                json.dumps(str(args) + str(kwargs)).encode()
+            ).hexdigest()
+            
+            # Check cache
+            if cache_key in cache:
+                result, timestamp = cache[cache_key]
+                if time.time() - timestamp < cache_ttl:
+                    return result
+            
+            # Execute function
+            result = await func(*args, **kwargs)
+            
+            # Cache result
+            cache[cache_key] = (result, time.time())
+            
+            return result
+        return wrapper
+    return decorator
+
+@cache_agent_results(cache_ttl=600)  # 10 minute cache
+async def cached_agent_ask(agent, question):
+    return await agent.ask(question)
+```
+
+## Monitoring and Logging
+
+```python
+import logging
+from datetime import datetime
+
+class AgentExecutionMonitor:
+    def __init__(self):
+        self.logger = logging.getLogger('agent_execution')
+        self.execution_log = []
+    
+    def log_execution_start(self, agent_name, task):
+        """Log execution start"""
+        log_entry = {
+            'agent': agent_name,
+            'task': task[:100],  # Truncate long tasks
+            'start_time': datetime.now(),
+            'status': 'started'
+        }
+        
+        self.execution_log.append(log_entry)
+        self.logger.info(f"Agent {agent_name} started task: {task[:50]}...")
+        
+        return len(self.execution_log) - 1  # Return log index
+    
+    def log_execution_end(self, log_index, result=None, error=None):
+        """Log execution end"""
+        if log_index < len(self.execution_log):
+            log_entry = self.execution_log[log_index]
+            log_entry['end_time'] = datetime.now()
+            log_entry['duration'] = (log_entry['end_time'] - log_entry['start_time']).total_seconds()
+            
+            if error:
+                log_entry['status'] = 'failed'
+                log_entry['error'] = str(error)
+                self.logger.error(f"Agent {log_entry['agent']} failed: {error}")
+            else:
+                log_entry['status'] = 'completed'
+                log_entry['result_length'] = len(result) if result else 0
+                self.logger.info(f"Agent {log_entry['agent']} completed in {log_entry['duration']:.2f}s")
+```
+
+## Best Practices
+
+1. **Resource Management**: Always properly initialize and clean up agents
+2. **Error Handling**: Implement comprehensive error handling and retry logic
+3. **Performance**: Use connection pooling and caching for high-throughput applications
+4. **Monitoring**: Log execution metrics and monitor agent performance
+5. **Scalability**: Design for horizontal scaling with multiple agent instances
+6. **Security**: Secure private keys and API credentials properly
+
+## Next Steps
+
+- [Agent Tools](/api-reference-python/agent/tools)
+- [Memory Management](/api-reference-python/memory/store)
+- [Chat Integration](/api-reference-python/chat/create)
