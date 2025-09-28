@@ -1,0 +1,520 @@
+# Retrieve Memory
+
+Retrieve stored data from the 0G decentralized storage network.
+
+## Overview
+
+The Memory system provides efficient retrieval of both ephemeral and persistent data. Data is automatically cached for better performance and supports various retrieval patterns for different use cases.
+
+## Methods
+
+### recall()
+
+Retrieve data from persistent storage.
+
+```python
+async def recall(self, key: str) -> Any
+```
+
+**Parameters:**
+- `key` (str): The unique identifier for the stored data
+
+**Returns:** `Any` - The stored data, or `None` if not found
+
+### get_ephemeral()
+
+Retrieve data from ephemeral (temporary) storage.
+
+```python
+def get_ephemeral(self, key: str) -> Any
+```
+
+**Parameters:**
+- `key` (str): The key for the ephemeral data
+
+**Returns:** `Any` - The stored data, or `None` if not found
+
+### get_messages()
+
+Retrieve current conversation messages.
+
+```python
+def get_messages(self) -> List[ChatMessage]
+```
+
+**Returns:** `List[ChatMessage]` - List of messages in the current conversation
+
+## Examples
+
+<CodeGroup>
+
+```python Basic Retrieval
+import asyncio
+from zg_ai_sdk import create_agent
+
+async def main():
+    agent = await create_agent({
+        'name': 'Retrieval Assistant',
+        'provider_address': '0xf07240Efa67755B5311bc75784a061eDB47165Dd',
+        'memory_bucket': 'retrieval-demo',
+        'private_key': 'your-private-key'
+    })
+    
+    # Store some data first
+    await agent.remember('user_name', 'Alice')
+    await agent.remember('user_age', 25)
+    await agent.remember('user_skills', ['Python', 'JavaScript', 'AI'])
+    
+    # Retrieve individual items
+    name = await agent.recall('user_name')
+    age = await agent.recall('user_age')
+    skills = await agent.recall('user_skills')
+    
+    print(f"Name: {name}")
+    print(f"Age: {age}")
+    print(f"Skills: {', '.join(skills)}")
+    
+    # Try to retrieve non-existent data
+    missing = await agent.recall('non_existent_key')
+    print(f"Missing data: {missing}")  # Will print: None
+
+asyncio.run(main())
+```
+
+```python Batch Retrieval
+import asyncio
+from zg_ai_sdk import create_agent
+
+async def batch_recall(agent, keys):
+    """Retrieve multiple keys efficiently"""
+    results = {}
+    for key in keys:
+        results[key] = await agent.recall(key)
+    return results
+
+async def main():
+    agent = await create_agent({
+        'name': 'Batch Retrieval Assistant',
+        'provider_address': '0xf07240Efa67755B5311bc75784a061eDB47165Dd',
+        'memory_bucket': 'batch-retrieval',
+        'private_key': 'your-private-key'
+    })
+    
+    # Store user profile data
+    profile_data = {
+        'personal_info': {'name': 'Bob', 'email': 'bob@example.com'},
+        'preferences': {'theme': 'dark', 'language': 'en'},
+        'settings': {'notifications': True, 'auto_save': False}
+    }
+    
+    for key, value in profile_data.items():
+        await agent.remember(key, value)
+    
+    # Batch retrieve all profile data
+    profile_keys = ['personal_info', 'preferences', 'settings']
+    retrieved_data = await batch_recall(agent, profile_keys)
+    
+    print("Retrieved profile data:")
+    for key, value in retrieved_data.items():
+        if value is not None:
+            print(f"  {key}: {value}")
+        else:
+            print(f"  {key}: Not found")
+
+asyncio.run(main())
+```
+
+```python Conditional Retrieval
+import asyncio
+from zg_ai_sdk import create_agent
+
+class UserProfile:
+    def __init__(self, agent):
+        self.agent = agent
+    
+    async def get_user_data(self, user_id, include_sensitive=False):
+        """Retrieve user data with conditional sensitive information"""
+        # Always retrieve basic info
+        basic_info = await self.agent.recall(f'user_{user_id}_basic')
+        
+        if not basic_info:
+            return None
+        
+        user_data = {'basic': basic_info}
+        
+        # Conditionally retrieve sensitive data
+        if include_sensitive:
+            sensitive_info = await self.agent.recall(f'user_{user_id}_sensitive')
+            if sensitive_info:
+                user_data['sensitive'] = sensitive_info
+        
+        # Always try to get preferences
+        preferences = await self.agent.recall(f'user_{user_id}_preferences')
+        if preferences:
+            user_data['preferences'] = preferences
+        
+        return user_data
+    
+    async def get_user_summary(self, user_id):
+        """Get a summary of user data"""
+        data = await self.get_user_data(user_id, include_sensitive=False)
+        
+        if not data:
+            return "User not found"
+        
+        basic = data['basic']
+        prefs = data.get('preferences', {})
+        
+        summary = f"User: {basic.get('name', 'Unknown')}"
+        if 'email' in basic:
+            summary += f" ({basic['email']})"
+        if 'theme' in prefs:
+            summary += f", Theme: {prefs['theme']}"
+        
+        return summary
+
+async def main():
+    agent = await create_agent({
+        'name': 'Profile Assistant',
+        'provider_address': '0xf07240Efa67755B5311bc75784a061eDB47165Dd',
+        'memory_bucket': 'profile-retrieval',
+        'private_key': 'your-private-key'
+    })
+    
+    profile = UserProfile(agent)
+    
+    # Store user data
+    await agent.remember('user_123_basic', {
+        'name': 'Charlie',
+        'email': 'charlie@example.com',
+        'joined': '2024-01-15'
+    })
+    
+    await agent.remember('user_123_sensitive', {
+        'ssn': '***-**-1234',
+        'payment_methods': ['card_ending_5678']
+    })
+    
+    await agent.remember('user_123_preferences', {
+        'theme': 'dark',
+        'notifications': True
+    })
+    
+    # Retrieve with different access levels
+    public_data = await profile.get_user_data('123', include_sensitive=False)
+    full_data = await profile.get_user_data('123', include_sensitive=True)
+    summary = await profile.get_user_summary('123')
+    
+    print("Public data:", public_data)
+    print("Full data:", full_data)
+    print("Summary:", summary)
+
+asyncio.run(main())
+```
+
+```python Cached Retrieval
+import asyncio
+from datetime import datetime, timedelta
+from zg_ai_sdk import create_agent
+
+class CachedMemory:
+    def __init__(self, agent, cache_ttl_seconds=300):  # 5 minute cache
+        self.agent = agent
+        self.cache = {}
+        self.cache_ttl = timedelta(seconds=cache_ttl_seconds)
+    
+    async def cached_recall(self, key):
+        """Retrieve with local caching"""
+        now = datetime.now()
+        
+        # Check cache first
+        if key in self.cache:
+            cached_data, timestamp = self.cache[key]
+            if now - timestamp < self.cache_ttl:
+                print(f"Cache hit for {key}")
+                return cached_data
+        
+        # Cache miss or expired, fetch from storage
+        print(f"Cache miss for {key}, fetching from storage")
+        data = await self.agent.recall(key)
+        
+        # Update cache
+        self.cache[key] = (data, now)
+        
+        return data
+    
+    def clear_cache(self, key=None):
+        """Clear cache for specific key or all keys"""
+        if key:
+            self.cache.pop(key, None)
+        else:
+            self.cache.clear()
+    
+    def get_cache_stats(self):
+        """Get cache statistics"""
+        return {
+            'cached_keys': len(self.cache),
+            'keys': list(self.cache.keys())
+        }
+
+async def main():
+    agent = await create_agent({
+        'name': 'Cached Assistant',
+        'provider_address': '0xf07240Efa67755B5311bc75784a061eDB47165Dd',
+        'memory_bucket': 'cached-retrieval',
+        'private_key': 'your-private-key'
+    })
+    
+    cached_memory = CachedMemory(agent, cache_ttl_seconds=60)
+    
+    # Store some data
+    await agent.remember('config', {'version': '1.0', 'debug': True})
+    
+    # First retrieval (cache miss)
+    config1 = await cached_memory.cached_recall('config')
+    print("First retrieval:", config1)
+    
+    # Second retrieval (cache hit)
+    config2 = await cached_memory.cached_recall('config')
+    print("Second retrieval:", config2)
+    
+    # Check cache stats
+    stats = cached_memory.get_cache_stats()
+    print("Cache stats:", stats)
+
+asyncio.run(main())
+```
+
+</CodeGroup>
+
+## Conversation Retrieval
+
+### recall_conversation()
+
+Retrieve a previously saved conversation.
+
+```python
+async def recall_conversation(self, conversation_id: str) -> List[ChatMessage]
+```
+
+**Parameters:**
+- `conversation_id` (str): The ID of the conversation to retrieve
+
+**Returns:** `List[ChatMessage]` - List of messages in the conversation
+
+**Example:**
+```python
+# Retrieve saved conversation
+messages = await memory.recall_conversation('important_meeting_001')
+
+print(f"Conversation has {len(messages)} messages:")
+for msg in messages:
+    timestamp = msg.timestamp.strftime('%H:%M:%S') if msg.timestamp else 'N/A'
+    print(f"[{timestamp}] {msg.role}: {msg.content}")
+```
+
+### get_conversation_context()
+
+Get conversation context as formatted string.
+
+```python
+def get_conversation_context(self) -> str
+```
+
+**Returns:** `str` - Formatted conversation context
+
+**Example:**
+```python
+context = memory.get_conversation_context()
+print("Current conversation context:")
+print(context)
+```
+
+## Advanced Retrieval Patterns
+
+### Hierarchical Data Retrieval
+
+```python
+async def get_nested_data(agent, base_key):
+    """Retrieve hierarchical data structure"""
+    # Get the main object
+    main_data = await agent.recall(base_key)
+    
+    if not main_data:
+        return None
+    
+    # Get related objects
+    if 'related_keys' in main_data:
+        for related_key in main_data['related_keys']:
+            related_data = await agent.recall(related_key)
+            main_data[f'related_{related_key}'] = related_data
+    
+    return main_data
+
+# Usage
+project_data = await get_nested_data(agent, 'project_001')
+```
+
+### Fallback Retrieval
+
+```python
+async def get_with_fallback(agent, primary_key, fallback_key, default_value=None):
+    """Try primary key, then fallback, then default"""
+    # Try primary key
+    data = await agent.recall(primary_key)
+    if data is not None:
+        return data
+    
+    # Try fallback key
+    data = await agent.recall(fallback_key)
+    if data is not None:
+        return data
+    
+    # Return default
+    return default_value
+
+# Usage
+user_theme = await get_with_fallback(
+    agent, 
+    'user_123_theme', 
+    'default_theme', 
+    'light'
+)
+```
+
+### Versioned Retrieval
+
+```python
+async def get_latest_version(agent, base_key):
+    """Get the latest version of versioned data"""
+    # Get version index
+    version_index = await agent.recall(f'{base_key}_versions') or []
+    
+    if not version_index:
+        return None
+    
+    # Get latest version
+    latest_version = max(version_index, key=lambda v: v['timestamp'])
+    return await agent.recall(f"{base_key}_v{latest_version['version']}")
+
+# Usage
+latest_document = await get_latest_version(agent, 'document_001')
+```
+
+## Error Handling and Validation
+
+```python
+from zg_ai_sdk import SDKError
+
+async def safe_recall(agent, key, expected_type=None, validator=None):
+    """Safely retrieve and validate data"""
+    try:
+        data = await agent.recall(key)
+        
+        if data is None:
+            return None
+        
+        # Type checking
+        if expected_type and not isinstance(data, expected_type):
+            print(f"Warning: Expected {expected_type}, got {type(data)}")
+            return None
+        
+        # Custom validation
+        if validator and not validator(data):
+            print(f"Warning: Data validation failed for key {key}")
+            return None
+        
+        return data
+        
+    except SDKError as e:
+        print(f"Storage error retrieving {key}: {e.message}")
+        return None
+    except Exception as e:
+        print(f"Unexpected error retrieving {key}: {e}")
+        return None
+
+# Usage with validation
+def validate_user_data(data):
+    required_fields = ['name', 'email']
+    return all(field in data for field in required_fields)
+
+user_data = await safe_recall(
+    agent, 
+    'user_123', 
+    expected_type=dict, 
+    validator=validate_user_data
+)
+```
+
+## Performance Optimization
+
+### Bulk Retrieval
+
+```python
+import asyncio
+
+async def bulk_recall(agent, keys):
+    """Retrieve multiple keys concurrently"""
+    tasks = [agent.recall(key) for key in keys]
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+    
+    return {
+        key: result if not isinstance(result, Exception) else None
+        for key, result in zip(keys, results)
+    }
+
+# Usage
+keys = ['user_1', 'user_2', 'user_3', 'settings', 'config']
+data = await bulk_recall(agent, keys)
+```
+
+### Lazy Loading
+
+```python
+class LazyData:
+    def __init__(self, agent, key):
+        self.agent = agent
+        self.key = key
+        self._data = None
+        self._loaded = False
+    
+    async def get(self):
+        if not self._loaded:
+            self._data = await self.agent.recall(self.key)
+            self._loaded = True
+        return self._data
+    
+    def is_loaded(self):
+        return self._loaded
+
+# Usage
+lazy_config = LazyData(agent, 'large_config')
+# Data is only loaded when needed
+config = await lazy_config.get()
+```
+
+## Memory Statistics
+
+Get information about memory usage:
+
+```python
+stats = memory.get_stats()
+print(f"Ephemeral messages: {stats['ephemeral_messages']}")
+print(f"Ephemeral data items: {stats['ephemeral_data']}")
+print(f"Max ephemeral messages: {stats['max_ephemeral_messages']}")
+```
+
+## Best Practices
+
+1. **Check for None**: Always check if retrieved data is `None`
+2. **Use Type Hints**: Specify expected return types for better code clarity
+3. **Implement Caching**: Cache frequently accessed data locally
+4. **Handle Errors**: Always handle potential storage errors gracefully
+5. **Validate Data**: Validate retrieved data before using it
+6. **Use Batch Operations**: Retrieve multiple items concurrently when possible
+
+## Next Steps
+
+- [Search Memory](/api-reference-python/memory/search)
+- [Store Memory](/api-reference-python/memory/store)
+- [Agent Integration](/api-reference-python/agent/create)

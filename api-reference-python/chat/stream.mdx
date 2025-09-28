@@ -1,0 +1,347 @@
+# Stream Chat
+
+Stream real-time responses from AI models for better user experience.
+
+## Overview
+
+Streaming allows you to receive AI responses in real-time as they are generated, providing a more interactive chat experience. This is particularly useful for long responses or when you want to display partial results to users.
+
+## Methods
+
+### stream_chat_completion()
+
+Stream responses for a chat completion request.
+
+```python
+async def stream_chat_completion(
+    self, 
+    messages: List[ChatMessage], 
+    on_chunk: Callable[[str], None]
+) -> str
+```
+
+### Parameters
+
+<ParamField path="messages" type="List[ChatMessage]" required>
+  List of chat messages for the conversation
+</ParamField>
+
+<ParamField path="on_chunk" type="Callable[[str], None]" required>
+  Callback function that receives each chunk of the response
+</ParamField>
+
+### Returns
+
+Returns the complete response text as a string after streaming is finished.
+
+## Examples
+
+<CodeGroup>
+
+```python Basic Streaming
+import asyncio
+from zg_ai_sdk import create_agent, ChatMessage
+
+async def main():
+    agent = await create_agent({
+        'name': 'Streaming Assistant',
+        'provider_address': '0xf07240Efa67755B5311bc75784a061eDB47165Dd',
+        'memory_bucket': 'streaming-memory',
+        'private_key': 'your-private-key'
+    })
+    
+    def handle_chunk(chunk: str):
+        print(chunk, end='', flush=True)
+    
+    # Stream a response
+    full_response = await agent.stream_chat(
+        'Tell me a detailed story about space exploration',
+        handle_chunk
+    )
+    
+    print(f"\n\nComplete response length: {len(full_response)} characters")
+
+asyncio.run(main())
+```
+
+```python Advanced Streaming with Context
+import asyncio
+from zg_ai_sdk import Chat, ChatMessage, create_zg_compute_network_broker
+
+async def main():
+    broker = create_zg_compute_network_broker('https://evmrpc-testnet.0g.ai')
+    chat = Chat(
+        broker=broker,
+        provider_address='0xf07240Efa67755B5311bc75784a061eDB47165Dd',
+        temperature=0.8,
+        max_tokens=2000
+    )
+    
+    messages = [
+        ChatMessage(role='system', content='You are a creative storyteller.'),
+        ChatMessage(role='user', content='Write a short story about AI and humans'),
+        ChatMessage(role='assistant', content='Once upon a time, in a world where...'),
+        ChatMessage(role='user', content='Continue the story with a plot twist')
+    ]
+    
+    chunks = []
+    def collect_chunks(chunk: str):
+        chunks.append(chunk)
+        print(chunk, end='', flush=True)
+    
+    full_response = await chat.stream_chat_completion(messages, collect_chunks)
+    
+    print(f"\n\nReceived {len(chunks)} chunks")
+    print(f"Total response: {full_response}")
+
+asyncio.run(main())
+```
+
+```python Streaming with Progress Tracking
+import asyncio
+from zg_ai_sdk import create_agent
+
+async def main():
+    agent = await create_agent({
+        'name': 'Progress Assistant',
+        'provider_address': '0xf07240Efa67755B5311bc75784a061eDB47165Dd',
+        'memory_bucket': 'progress-memory',
+        'private_key': 'your-private-key'
+    })
+    
+    word_count = 0
+    char_count = 0
+    
+    def track_progress(chunk: str):
+        nonlocal word_count, char_count
+        char_count += len(chunk)
+        word_count += len(chunk.split())
+        
+        # Print chunk
+        print(chunk, end='', flush=True)
+        
+        # Show progress every 50 characters
+        if char_count % 50 == 0:
+            print(f"\n[Progress: {char_count} chars, ~{word_count} words]", end='')
+    
+    response = await agent.stream_chat(
+        'Explain machine learning in detail with examples',
+        track_progress
+    )
+    
+    print(f"\n\nFinal stats: {char_count} characters, {word_count} words")
+
+asyncio.run(main())
+```
+
+```python Streaming with Error Handling
+import asyncio
+from zg_ai_sdk import create_agent, SDKError
+
+async def main():
+    try:
+        agent = await create_agent({
+            'name': 'Error Handling Assistant',
+            'provider_address': '0xf07240Efa67755B5311bc75784a061eDB47165Dd',
+            'memory_bucket': 'error-memory',
+            'private_key': 'your-private-key'
+        })
+        
+        chunks_received = []
+        
+        def safe_chunk_handler(chunk: str):
+            try:
+                chunks_received.append(chunk)
+                print(chunk, end='', flush=True)
+            except Exception as e:
+                print(f"\nError handling chunk: {e}")
+        
+        response = await agent.stream_chat(
+            'Generate a comprehensive guide to Python programming',
+            safe_chunk_handler
+        )
+        
+        print(f"\n\nSuccessfully received {len(chunks_received)} chunks")
+        
+    except SDKError as e:
+        print(f"SDK Error: {e.message} (Code: {e.code})")
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+
+asyncio.run(main())
+```
+
+</CodeGroup>
+
+## Agent Streaming Methods
+
+When using the Agent class, you have access to convenient streaming methods:
+
+### stream_chat()
+
+Stream a chat response with automatic context management.
+
+```python
+async def stream_chat(
+    self, 
+    input_text: str, 
+    on_chunk: Callable[[str], None]
+) -> str
+```
+
+**Example:**
+```python
+agent.set_system_prompt('You are a helpful coding assistant.')
+
+def print_chunk(chunk: str):
+    print(chunk, end='', flush=True)
+
+response = await agent.stream_chat(
+    'Explain Python decorators with examples',
+    print_chunk
+)
+```
+
+## Chunk Processing Patterns
+
+### Simple Display
+```python
+def display_chunk(chunk: str):
+    print(chunk, end='', flush=True)
+```
+
+### Accumulate and Process
+```python
+accumulated_text = ""
+
+def accumulate_chunk(chunk: str):
+    global accumulated_text
+    accumulated_text += chunk
+    print(chunk, end='', flush=True)
+    
+    # Process every sentence
+    if '.' in chunk:
+        # Do something with complete sentences
+        pass
+```
+
+### Real-time Analysis
+```python
+import re
+
+def analyze_chunk(chunk: str):
+    # Count words in real-time
+    words = re.findall(r'\b\w+\b', chunk)
+    print(f"[+{len(words)} words] {chunk}", end='', flush=True)
+```
+
+### Buffer Management
+```python
+buffer = ""
+
+def buffered_chunk(chunk: str):
+    global buffer
+    buffer += chunk
+    
+    # Process complete lines
+    while '\n' in buffer:
+        line, buffer = buffer.split('\n', 1)
+        print(f"Line: {line}")
+    
+    # Display remaining chunk
+    print(chunk, end='', flush=True)
+```
+
+## Performance Considerations
+
+### Chunk Size
+- Chunks are typically 1-50 characters
+- Larger models may produce larger chunks
+- Network latency affects chunk delivery timing
+
+### Memory Usage
+```python
+# Efficient chunk handling for large responses
+def memory_efficient_handler(chunk: str):
+    # Process chunk immediately, don't store all chunks
+    print(chunk, end='', flush=True)
+    
+    # Only store what you need
+    if 'important' in chunk.lower():
+        important_chunks.append(chunk)
+```
+
+### Error Recovery
+```python
+async def robust_streaming():
+    max_retries = 3
+    retry_count = 0
+    
+    while retry_count < max_retries:
+        try:
+            response = await agent.stream_chat(message, chunk_handler)
+            break
+        except Exception as e:
+            retry_count += 1
+            print(f"Retry {retry_count}/{max_retries} due to: {e}")
+            await asyncio.sleep(1)  # Wait before retry
+```
+
+## Integration with UI Frameworks
+
+### Flask/FastAPI Streaming
+```python
+from fastapi import FastAPI
+from fastapi.responses import StreamingResponse
+
+app = FastAPI()
+
+@app.get("/stream-chat")
+async def stream_chat_endpoint(message: str):
+    async def generate():
+        def chunk_handler(chunk: str):
+            return f"data: {chunk}\n\n"
+        
+        await agent.stream_chat(message, chunk_handler)
+    
+    return StreamingResponse(generate(), media_type="text/plain")
+```
+
+### WebSocket Integration
+```python
+import websocket
+import asyncio
+
+async def websocket_streaming(websocket, message):
+    def send_chunk(chunk: str):
+        asyncio.create_task(websocket.send(chunk))
+    
+    response = await agent.stream_chat(message, send_chunk)
+    await websocket.send(f"[DONE] {response}")
+```
+
+## Error Handling
+
+Common errors during streaming:
+
+```python
+from zg_ai_sdk import SDKError
+
+try:
+    response = await agent.stream_chat(message, chunk_handler)
+except SDKError as e:
+    if e.code == 'NETWORK_ERROR':
+        print("Network connection lost during streaming")
+    elif e.code == 'RATE_LIMIT':
+        print("Rate limit exceeded")
+    else:
+        print(f"SDK error: {e.message}")
+except Exception as e:
+    print(f"Unexpected error: {e}")
+```
+
+## Next Steps
+
+- [Chat History](/api-reference-python/chat/history)
+- [Memory Integration](/api-reference-python/memory/store)
+- [Agent Tools](/api-reference-python/agent/tools)

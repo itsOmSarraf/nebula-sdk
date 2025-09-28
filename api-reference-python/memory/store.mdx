@@ -1,0 +1,458 @@
+# Store Memory
+
+Store data persistently using the 0G decentralized storage network.
+
+## Overview
+
+The Memory class provides both ephemeral (temporary) and persistent storage capabilities. Persistent storage uses the 0G network to ensure your data is decentralized, secure, and always available.
+
+## Constructor
+
+```python
+Memory(storage_client: ZGStorageClient, bucket: str, max_ephemeral_messages: int = 50)
+```
+
+### Parameters
+
+<ParamField path="storage_client" type="ZGStorageClient" required>
+  The storage client for connecting to the 0G network
+</ParamField>
+
+<ParamField path="bucket" type="str" required>
+  The storage bucket/stream ID for organizing data
+</ParamField>
+
+<ParamField path="max_ephemeral_messages" type="int" default="50">
+  Maximum number of ephemeral messages to keep in memory
+</ParamField>
+
+## Methods
+
+### remember()
+
+Store data persistently on the 0G network.
+
+```python
+async def remember(self, key: str, value: Any) -> None
+```
+
+**Parameters:**
+- `key` (str): Unique identifier for the stored data
+- `value` (Any): The data to store (will be JSON serialized)
+
+**Example:**
+```python
+await memory.remember('user_preferences', {
+    'language': 'English',
+    'theme': 'dark',
+    'notifications': True
+})
+```
+
+### recall()
+
+Retrieve previously stored data from the 0G network.
+
+```python
+async def recall(self, key: str) -> Any
+```
+
+**Parameters:**
+- `key` (str): The key of the data to retrieve
+
+**Returns:** `Any` - The stored data, or `None` if not found
+
+**Example:**
+```python
+preferences = await memory.recall('user_preferences')
+if preferences:
+    print(f"User language: {preferences['language']}")
+```
+
+### forget()
+
+Remove data from persistent storage.
+
+```python
+async def forget(self, key: str) -> None
+```
+
+**Parameters:**
+- `key` (str): The key of the data to remove
+
+**Example:**
+```python
+await memory.forget('temporary_data')
+```
+
+## Examples
+
+<CodeGroup>
+
+```python Basic Storage
+import asyncio
+from zg_ai_sdk import create_agent
+
+async def main():
+    agent = await create_agent({
+        'name': 'Storage Assistant',
+        'provider_address': '0xf07240Efa67755B5311bc75784a061eDB47165Dd',
+        'memory_bucket': 'storage-demo',
+        'private_key': 'your-private-key'
+    })
+    
+    # Store user information
+    await agent.remember('user_profile', {
+        'name': 'Alice',
+        'age': 30,
+        'interests': ['AI', 'Python', 'Blockchain']
+    })
+    
+    # Store application settings
+    await agent.remember('app_settings', {
+        'version': '1.0.0',
+        'debug_mode': False,
+        'api_timeout': 30
+    })
+    
+    # Retrieve and use stored data
+    profile = await agent.recall('user_profile')
+    settings = await agent.recall('app_settings')
+    
+    print(f"User: {profile['name']}, Interests: {profile['interests']}")
+    print(f"App Version: {settings['version']}")
+
+asyncio.run(main())
+```
+
+```python Complex Data Structures
+import asyncio
+from datetime import datetime
+from zg_ai_sdk import create_agent
+
+async def main():
+    agent = await create_agent({
+        'name': 'Complex Storage Assistant',
+        'provider_address': '0xf07240Efa67755B5311bc75784a061eDB47165Dd',
+        'memory_bucket': 'complex-storage',
+        'private_key': 'your-private-key'
+    })
+    
+    # Store complex nested data
+    project_data = {
+        'project_id': 'proj_001',
+        'name': 'AI Assistant',
+        'created_at': datetime.now().isoformat(),
+        'team_members': [
+            {'name': 'Alice', 'role': 'Developer'},
+            {'name': 'Bob', 'role': 'Designer'}
+        ],
+        'milestones': {
+            'planning': {'completed': True, 'date': '2024-01-15'},
+            'development': {'completed': False, 'date': None},
+            'testing': {'completed': False, 'date': None}
+        },
+        'metadata': {
+            'tags': ['ai', 'python', 'web'],
+            'priority': 'high',
+            'budget': 50000
+        }
+    }
+    
+    await agent.remember('project_001', project_data)
+    
+    # Retrieve and modify
+    project = await agent.recall('project_001')
+    project['milestones']['development']['completed'] = True
+    project['milestones']['development']['date'] = datetime.now().isoformat()
+    
+    # Update stored data
+    await agent.remember('project_001', project)
+    
+    print(f"Project: {project['name']}")
+    print(f"Team size: {len(project['team_members'])}")
+
+asyncio.run(main())
+```
+
+```python Configuration Management
+import asyncio
+from zg_ai_sdk import create_agent
+
+class ConfigManager:
+    def __init__(self, agent):
+        self.agent = agent
+        self.config_key = 'app_config'
+    
+    async def load_config(self):
+        config = await self.agent.recall(self.config_key)
+        return config or self.get_default_config()
+    
+    async def save_config(self, config):
+        await self.agent.remember(self.config_key, config)
+    
+    async def update_setting(self, key, value):
+        config = await self.load_config()
+        config[key] = value
+        await self.save_config(config)
+    
+    def get_default_config(self):
+        return {
+            'theme': 'light',
+            'language': 'en',
+            'auto_save': True,
+            'max_history': 100,
+            'api_timeout': 30
+        }
+
+async def main():
+    agent = await create_agent({
+        'name': 'Config Assistant',
+        'provider_address': '0xf07240Efa67755B5311bc75784a061eDB47165Dd',
+        'memory_bucket': 'config-storage',
+        'private_key': 'your-private-key'
+    })
+    
+    config_manager = ConfigManager(agent)
+    
+    # Load configuration
+    config = await config_manager.load_config()
+    print(f"Current theme: {config['theme']}")
+    
+    # Update a setting
+    await config_manager.update_setting('theme', 'dark')
+    
+    # Verify update
+    updated_config = await config_manager.load_config()
+    print(f"Updated theme: {updated_config['theme']}")
+
+asyncio.run(main())
+```
+
+```python Data Versioning
+import asyncio
+from datetime import datetime
+from zg_ai_sdk import create_agent
+
+class VersionedStorage:
+    def __init__(self, agent):
+        self.agent = agent
+    
+    async def store_versioned(self, key, value):
+        # Store current version
+        await self.agent.remember(key, value)
+        
+        # Store version history
+        history_key = f"{key}_history"
+        history = await self.agent.recall(history_key) or []
+        
+        version_entry = {
+            'version': len(history) + 1,
+            'timestamp': datetime.now().isoformat(),
+            'data': value
+        }
+        
+        history.append(version_entry)
+        await self.agent.remember(history_key, history)
+    
+    async def get_version(self, key, version=None):
+        if version is None:
+            return await self.agent.recall(key)
+        
+        history_key = f"{key}_history"
+        history = await self.agent.recall(history_key) or []
+        
+        for entry in history:
+            if entry['version'] == version:
+                return entry['data']
+        
+        return None
+    
+    async def list_versions(self, key):
+        history_key = f"{key}_history"
+        history = await self.agent.recall(history_key) or []
+        return [{'version': entry['version'], 'timestamp': entry['timestamp']} 
+                for entry in history]
+
+async def main():
+    agent = await create_agent({
+        'name': 'Versioned Storage Assistant',
+        'provider_address': '0xf07240Efa67755B5311bc75784a061eDB47165Dd',
+        'memory_bucket': 'versioned-storage',
+        'private_key': 'your-private-key'
+    })
+    
+    storage = VersionedStorage(agent)
+    
+    # Store multiple versions of data
+    await storage.store_versioned('document', {'title': 'Draft 1', 'content': 'Initial content'})
+    await storage.store_versioned('document', {'title': 'Draft 2', 'content': 'Updated content'})
+    await storage.store_versioned('document', {'title': 'Final', 'content': 'Final content'})
+    
+    # Get current version
+    current = await storage.get_version('document')
+    print(f"Current: {current['title']}")
+    
+    # Get specific version
+    draft1 = await storage.get_version('document', version=1)
+    print(f"Version 1: {draft1['title']}")
+    
+    # List all versions
+    versions = await storage.list_versions('document')
+    print(f"Available versions: {len(versions)}")
+
+asyncio.run(main())
+```
+
+</CodeGroup>
+
+## Ephemeral Storage
+
+For temporary data that doesn't need persistence:
+
+### set_ephemeral()
+
+Store data in temporary memory.
+
+```python
+def set_ephemeral(self, key: str, value: Any) -> None
+```
+
+### get_ephemeral()
+
+Retrieve data from temporary memory.
+
+```python
+def get_ephemeral(self, key: str) -> Any
+```
+
+### delete_ephemeral()
+
+Remove data from temporary memory.
+
+```python
+def delete_ephemeral(self, key: str) -> bool
+```
+
+**Example:**
+```python
+# Temporary session data
+memory.set_ephemeral('session_id', 'abc123')
+memory.set_ephemeral('temp_calculation', {'result': 42, 'steps': [1, 2, 3]})
+
+# Retrieve
+session_id = memory.get_ephemeral('session_id')
+calculation = memory.get_ephemeral('temp_calculation')
+
+# Clean up
+memory.delete_ephemeral('temp_calculation')
+```
+
+## Conversation Storage
+
+### remember_conversation()
+
+Save the current conversation to persistent storage.
+
+```python
+async def remember_conversation(self, conversation_id: str) -> None
+```
+
+### recall_conversation()
+
+Load a previously saved conversation.
+
+```python
+async def recall_conversation(self, conversation_id: str) -> List[ChatMessage]
+```
+
+**Example:**
+```python
+# Save current conversation
+await memory.remember_conversation('important_chat_001')
+
+# Load conversation later
+messages = await memory.recall_conversation('important_chat_001')
+for msg in messages:
+    print(f"{msg.role}: {msg.content}")
+```
+
+## Data Types and Serialization
+
+The Memory system automatically handles JSON serialization for common Python types:
+
+### Supported Types
+- Basic types: `str`, `int`, `float`, `bool`, `None`
+- Collections: `list`, `dict`, `tuple`
+- Datetime objects (converted to ISO strings)
+- Custom objects (if JSON serializable)
+
+### Custom Serialization
+```python
+import json
+from datetime import datetime
+
+class CustomData:
+    def __init__(self, name, created_at):
+        self.name = name
+        self.created_at = created_at
+    
+    def to_dict(self):
+        return {
+            'name': self.name,
+            'created_at': self.created_at.isoformat()
+        }
+    
+    @classmethod
+    def from_dict(cls, data):
+        return cls(
+            name=data['name'],
+            created_at=datetime.fromisoformat(data['created_at'])
+        )
+
+# Store custom object
+custom_obj = CustomData('Test', datetime.now())
+await memory.remember('custom_data', custom_obj.to_dict())
+
+# Retrieve custom object
+data = await memory.recall('custom_data')
+restored_obj = CustomData.from_dict(data)
+```
+
+## Error Handling
+
+```python
+from zg_ai_sdk import SDKError
+
+try:
+    await memory.remember('test_key', {'data': 'value'})
+    result = await memory.recall('test_key')
+except SDKError as e:
+    if e.code == 'STORAGE_ERROR':
+        print("Failed to access storage")
+    elif e.code == 'NETWORK_ERROR':
+        print("Network connection failed")
+    else:
+        print(f"Storage error: {e.message}")
+```
+
+## Best Practices
+
+1. **Key Naming**: Use descriptive, hierarchical keys like `user_123_preferences`
+2. **Data Size**: Keep individual items under 1MB for optimal performance
+3. **Batch Operations**: Group related data to minimize storage calls
+4. **Error Handling**: Always handle potential storage failures gracefully
+5. **Data Validation**: Validate data before storing to prevent corruption
+
+## Performance Considerations
+
+- **Caching**: Frequently accessed data is cached locally
+- **Compression**: Large data is automatically compressed
+- **Batching**: Multiple operations are batched when possible
+- **Retry Logic**: Automatic retry for transient network failures
+
+## Next Steps
+
+- [Retrieve Memory](/api-reference-python/memory/retrieve)
+- [Search Memory](/api-reference-python/memory/search)
+- [Agent Integration](/api-reference-python/agent/create)

@@ -1,0 +1,28 @@
+{
+  "network": {
+    "name": "localhost",
+    "chainId": 31337,
+    "rpcUrl": "https://evmrpc-testnet.0g.ai",
+    "blockExplorer": "https://explorer-testnet.0g.ai"
+  },
+  "contracts": {
+    "agentFactory": "0x5FbDB2315678afecb367f032d93F642f64180aa3",
+    "agentImplementation": "0xa16E02E87b7454126E5E10d957A927A7F5B5d2be",
+    "erc20Factory": "0xB7A5bd0345EF1Cc5E66bf61BdeC17D2461fBd968",
+    "erc721Factory": "0xeEBe00Ac0756308ac4AaBfD76c05c4F3088B8883"
+  },
+  "config": {
+    "deploymentFeeWei": "1000000000000000",
+    "deploymentFeeEth": "0.001",
+    "spendingLimitPercentage": 33,
+    "spendingResetPeriodHours": 24,
+    "maxAgentNameLength": 50,
+    "maxDescriptionLength": 500
+  },
+  "deployment": {
+    "deployer": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+    "timestamp": "2025-09-27T19:19:37.264Z",
+    "blockNumber": 1,
+    "txHash": "0xfdba06d6c39365b16b9ce9bda849539251c77462dcff54a9bf8d4e7ec38438d3"
+  }
+}

@@ -1,0 +1,1085 @@
+# Agent Tools
+
+Extend agent capabilities with custom tools and integrations in Python.
+
+## Overview
+
+While the current 0G AI SDK focuses on conversational AI and memory management, you can extend agents with custom tools to perform specific tasks, integrate with external APIs, and create more sophisticated AI applications.
+
+## Tool Architecture
+
+### Tool Interface
+
+Define a standard interface for agent tools:
+
+```python
+from abc import ABC, abstractmethod
+from typing import Any, Dict, Optional
+from dataclasses import dataclass
+
+@dataclass
+class ToolResult:
+    success: bool
+    result: Any
+    error: Optional[str] = None
+    metadata: Optional[Dict[str, Any]] = None
+
+class AgentTool(ABC):
+    """Base class for agent tools"""
+    
+    def __init__(self, name: str, description: str):
+        self.name = name
+        self.description = description
+    
+    @abstractmethod
+    async def execute(self, parameters: Dict[str, Any]) -> ToolResult:
+        """Execute the tool with given parameters"""
+        pass
+    
+    @abstractmethod
+    def get_schema(self) -> Dict[str, Any]:
+        """Get the tool's parameter schema"""
+        pass
+    
+    def validate_parameters(self, parameters: Dict[str, Any]) -> bool:
+        """Validate tool parameters"""
+        # Override in subclasses for custom validation
+        return True
+```
+
+### Tool Manager
+
+Manage multiple tools for an agent:
+
+```python
+class ToolManager:
+    def __init__(self):
+        self.tools = {}
+    
+    def register_tool(self, tool: AgentTool):
+        """Register a tool with the manager"""
+        self.tools[tool.name] = tool
+    
+    def get_tool(self, name: str) -> Optional[AgentTool]:
+        """Get a tool by name"""
+        return self.tools.get(name)
+    
+    def list_tools(self) -> Dict[str, str]:
+        """List all available tools"""
+        return {name: tool.description for name, tool in self.tools.items()}
+    
+    async def execute_tool(self, name: str, parameters: Dict[str, Any]) -> ToolResult:
+        """Execute a tool by name"""
+        tool = self.get_tool(name)
+        if not tool:
+            return ToolResult(
+                success=False,
+                result=None,
+                error=f"Tool '{name}' not found"
+            )
+        
+        if not tool.validate_parameters(parameters):
+            return ToolResult(
+                success=False,
+                result=None,
+                error="Invalid parameters"
+            )
+        
+        try:
+            return await tool.execute(parameters)
+        except Exception as e:
+            return ToolResult(
+                success=False,
+                result=None,
+                error=str(e)
+            )
+```
+
+## Built-in Tools
+
+### Web Search Tool
+
+```python
+import aiohttp
+from typing import List
+
+class WebSearchTool(AgentTool):
+    def __init__(self, api_key: str):
+        super().__init__(
+            name="web_search",
+            description="Search the web for information"
+        )
+        self.api_key = api_key
+    
+    async def execute(self, parameters: Dict[str, Any]) -> ToolResult:
+        query = parameters.get('query', '')
+        max_results = parameters.get('max_results', 5)
+        
+        if not query:
+            return ToolResult(
+                success=False,
+                result=None,
+                error="Query parameter is required"
+            )
+        
+        try:
+            # Example using a search API (replace with actual implementation)
+            async with aiohttp.ClientSession() as session:
+                # This is a placeholder - implement with actual search API
+                results = await self._perform_search(session, query, max_results)
+                
+                return ToolResult(
+                    success=True,
+                    result=results,
+                    metadata={'query': query, 'count': len(results)}
+                )
+        
+        except Exception as e:
+            return ToolResult(
+                success=False,
+                result=None,
+                error=f"Search failed: {str(e)}"
+            )
+    
+    async def _perform_search(self, session, query: str, max_results: int) -> List[Dict]:
+        # Placeholder implementation
+        # Replace with actual search API integration
+        return [
+            {
+                'title': f'Result for {query}',
+                'url': 'https://example.com',
+                'snippet': f'This is a search result for {query}'
+            }
+        ]
+    
+    def get_schema(self) -> Dict[str, Any]:
+        return {
+            'type': 'object',
+            'properties': {
+                'query': {
+                    'type': 'string',
+                    'description': 'Search query'
+                },
+                'max_results': {
+                    'type': 'integer',
+                    'description': 'Maximum number of results',
+                    'default': 5
+                }
+            },
+            'required': ['query']
+        }
+```
+
+### File Operations Tool
+
+```python
+import os
+import aiofiles
+from pathlib import Path
+
+class FileOperationsTool(AgentTool):
+    def __init__(self, allowed_directories: List[str] = None):
+        super().__init__(
+            name="file_operations",
+            description="Perform file system operations"
+        )
+        self.allowed_directories = allowed_directories or []
+    
+    async def execute(self, parameters: Dict[str, Any]) -> ToolResult:
+        operation = parameters.get('operation')
+        file_path = parameters.get('file_path')
+        
+        if not self._is_path_allowed(file_path):
+            return ToolResult(
+                success=False,
+                result=None,
+                error="File path not allowed"
+            )
+        
+        try:
+            if operation == 'read':
+                result = await self._read_file(file_path)
+            elif operation == 'write':
+                content = parameters.get('content', '')
+                result = await self._write_file(file_path, content)
+            elif operation == 'list':
+                result = await self._list_directory(file_path)
+            elif operation == 'exists':
+                result = await self._file_exists(file_path)
+            else:
+                return ToolResult(
+                    success=False,
+                    result=None,
+                    error=f"Unknown operation: {operation}"
+                )
+            
+            return ToolResult(success=True, result=result)
+            
+        except Exception as e:
+            return ToolResult(
+                success=False,
+                result=None,
+                error=str(e)
+            )
+    
+    def _is_path_allowed(self, file_path: str) -> bool:
+        """Check if file path is in allowed directories"""
+        if not self.allowed_directories:
+            return True
+        
+        abs_path = os.path.abspath(file_path)
+        return any(
+            abs_path.startswith(os.path.abspath(allowed_dir))
+            for allowed_dir in self.allowed_directories
+        )
+    
+    async def _read_file(self, file_path: str) -> str:
+        async with aiofiles.open(file_path, 'r') as f:
+            return await f.read()
+    
+    async def _write_file(self, file_path: str, content: str) -> str:
+        async with aiofiles.open(file_path, 'w') as f:
+            await f.write(content)
+        return f"Written {len(content)} characters to {file_path}"
+    
+    async def _list_directory(self, dir_path: str) -> List[str]:
+        path = Path(dir_path)
+        if path.is_dir():
+            return [item.name for item in path.iterdir()]
+        else:
+            raise ValueError(f"{dir_path} is not a directory")
+    
+    async def _file_exists(self, file_path: str) -> bool:
+        return Path(file_path).exists()
+    
+    def get_schema(self) -> Dict[str, Any]:
+        return {
+            'type': 'object',
+            'properties': {
+                'operation': {
+                    'type': 'string',
+                    'enum': ['read', 'write', 'list', 'exists'],
+                    'description': 'File operation to perform'
+                },
+                'file_path': {
+                    'type': 'string',
+                    'description': 'Path to file or directory'
+                },
+                'content': {
+                    'type': 'string',
+                    'description': 'Content to write (for write operation)'
+                }
+            },
+            'required': ['operation', 'file_path']
+        }
+```
+
+### Calculator Tool
+
+```python
+import math
+import ast
+import operator
+
+class CalculatorTool(AgentTool):
+    def __init__(self):
+        super().__init__(
+            name="calculator",
+            description="Perform mathematical calculations"
+        )
+        
+        # Safe operators for evaluation
+        self.operators = {
+            ast.Add: operator.add,
+            ast.Sub: operator.sub,
+            ast.Mult: operator.mul,
+            ast.Div: operator.truediv,
+            ast.Pow: operator.pow,
+            ast.BitXor: operator.xor,
+            ast.USub: operator.neg,
+        }
+        
+        # Safe functions
+        self.functions = {
+            'sin': math.sin,
+            'cos': math.cos,
+            'tan': math.tan,
+            'sqrt': math.sqrt,
+            'log': math.log,
+            'exp': math.exp,
+            'abs': abs,
+            'round': round,
+        }
+    
+    async def execute(self, parameters: Dict[str, Any]) -> ToolResult:
+        expression = parameters.get('expression', '')
+        
+        if not expression:
+            return ToolResult(
+                success=False,
+                result=None,
+                error="Expression parameter is required"
+            )
+        
+        try:
+            result = self._safe_eval(expression)
+            return ToolResult(
+                success=True,
+                result=result,
+                metadata={'expression': expression}
+            )
+        
+        except Exception as e:
+            return ToolResult(
+                success=False,
+                result=None,
+                error=f"Calculation error: {str(e)}"
+            )
+    
+    def _safe_eval(self, expression: str) -> float:
+        """Safely evaluate mathematical expressions"""
+        try:
+            # Parse the expression
+            node = ast.parse(expression, mode='eval')
+            return self._eval_node(node.body)
+        except Exception as e:
+            raise ValueError(f"Invalid expression: {e}")
+    
+    def _eval_node(self, node):
+        """Recursively evaluate AST nodes"""
+        if isinstance(node, ast.Constant):  # Python 3.8+
+            return node.value
+        elif isinstance(node, ast.Num):  # Python < 3.8
+            return node.n
+        elif isinstance(node, ast.BinOp):
+            left = self._eval_node(node.left)
+            right = self._eval_node(node.right)
+            op = self.operators.get(type(node.op))
+            if op:
+                return op(left, right)
+            else:
+                raise ValueError(f"Unsupported operator: {type(node.op)}")
+        elif isinstance(node, ast.UnaryOp):
+            operand = self._eval_node(node.operand)
+            op = self.operators.get(type(node.op))
+            if op:
+                return op(operand)
+            else:
+                raise ValueError(f"Unsupported unary operator: {type(node.op)}")
+        elif isinstance(node, ast.Call):
+            func_name = node.func.id
+            if func_name in self.functions:
+                args = [self._eval_node(arg) for arg in node.args]
+                return self.functions[func_name](*args)
+            else:
+                raise ValueError(f"Unsupported function: {func_name}")
+        else:
+            raise ValueError(f"Unsupported node type: {type(node)}")
+    
+    def get_schema(self) -> Dict[str, Any]:
+        return {
+            'type': 'object',
+            'properties': {
+                'expression': {
+                    'type': 'string',
+                    'description': 'Mathematical expression to evaluate'
+                }
+            },
+            'required': ['expression']
+        }
+```
+
+## Examples
+
+<CodeGroup>
+
+```python Enhanced Agent with Tools
+import asyncio
+from zg_ai_sdk import create_agent
+
+class EnhancedAgent:
+    def __init__(self, agent_config):
+        self.agent_config = agent_config
+        self.agent = None
+        self.tool_manager = ToolManager()
+        self._setup_tools()
+    
+    def _setup_tools(self):
+        """Setup available tools"""
+        # Add calculator tool
+        calculator = CalculatorTool()
+        self.tool_manager.register_tool(calculator)
+        
+        # Add file operations tool (with restricted access)
+        file_ops = FileOperationsTool(allowed_directories=['/tmp', './data'])
+        self.tool_manager.register_tool(file_ops)
+        
+        # Add web search tool (if API key available)
+        # web_search = WebSearchTool(api_key='your-api-key')
+        # self.tool_manager.register_tool(web_search)
+    
+    async def initialize(self):
+        """Initialize the agent"""
+        self.agent = await create_agent(self.agent_config)
+        await self.agent.init()
+        
+        # Set system prompt that includes tool information
+        tools_info = self._get_tools_description()
+        system_prompt = f"""
+        You are an AI assistant with access to the following tools:
+        
+        {tools_info}
+        
+        When a user asks for something that requires a tool, respond with:
+        TOOL_USE: tool_name
+        PARAMETERS: {{parameter_dict}}
+        
+        For example:
+        TOOL_USE: calculator
+        PARAMETERS: {{"expression": "2 + 2"}}
+        """
+        
+        self.agent.set_system_prompt(system_prompt)
+    
+    def _get_tools_description(self) -> str:
+        """Get description of available tools"""
+        tools = self.tool_manager.list_tools()
+        descriptions = []
+        
+        for name, description in tools.items():
+            tool = self.tool_manager.get_tool(name)
+            schema = tool.get_schema()
+            descriptions.append(f"- {name}: {description}")
+            descriptions.append(f"  Parameters: {schema}")
+        
+        return "\n".join(descriptions)
+    
+    async def ask_with_tools(self, question: str) -> str:
+        """Ask agent with tool execution capability"""
+        response = await self.agent.ask(question)
+        
+        # Check if response contains tool usage
+        if "TOOL_USE:" in response:
+            return await self._handle_tool_usage(response, question)
+        
+        return response
+    
+    async def _handle_tool_usage(self, response: str, original_question: str) -> str:
+        """Handle tool usage in agent response"""
+        lines = response.split('\n')
+        tool_name = None
+        parameters = {}
+        
+        for line in lines:
+            if line.startswith('TOOL_USE:'):
+                tool_name = line.split(':', 1)[1].strip()
+            elif line.startswith('PARAMETERS:'):
+                param_str = line.split(':', 1)[1].strip()
+                try:
+                    parameters = eval(param_str)  # In production, use json.loads
+                except:
+                    parameters = {}
+        
+        if tool_name:
+            # Execute the tool
+            result = await self.tool_manager.execute_tool(tool_name, parameters)
+            
+            if result.success:
+                # Ask agent to interpret the result
+                follow_up = f"""
+                I used the {tool_name} tool with parameters {parameters}.
+                The result was: {result.result}
+                
+                Original question: {original_question}
+                
+                Please provide a complete answer based on this result.
+                """
+                
+                return await self.agent.ask(follow_up)
+            else:
+                return f"Tool execution failed: {result.error}"
+        
+        return response
+
+async def main():
+    config = {
+        'name': 'Enhanced Agent',
+        'provider_address': '0xf07240Efa67755B5311bc75784a061eDB47165Dd',
+        'memory_bucket': 'enhanced-memory',
+        'private_key': 'your-private-key'
+    }
+    
+    enhanced_agent = EnhancedAgent(config)
+    await enhanced_agent.initialize()
+    
+    # Test with calculation
+    response = await enhanced_agent.ask_with_tools(
+        "What is the square root of 144 plus 25?"
+    )
+    print("Math response:", response)
+    
+    # Test with file operations
+    response = await enhanced_agent.ask_with_tools(
+        "Can you check if the file '/tmp/test.txt' exists?"
+    )
+    print("File response:", response)
+
+asyncio.run(main())
+```
+
+```python API Integration Tool
+import aiohttp
+import json
+from typing import Dict, Any
+
+class APIIntegrationTool(AgentTool):
+    def __init__(self, base_url: str, headers: Dict[str, str] = None):
+        super().__init__(
+            name="api_integration",
+            description="Make HTTP requests to external APIs"
+        )
+        self.base_url = base_url
+        self.headers = headers or {}
+    
+    async def execute(self, parameters: Dict[str, Any]) -> ToolResult:
+        method = parameters.get('method', 'GET').upper()
+        endpoint = parameters.get('endpoint', '')
+        data = parameters.get('data')
+        params = parameters.get('params')
+        
+        url = f"{self.base_url.rstrip('/')}/{endpoint.lstrip('/')}"
+        
+        try:
+            async with aiohttp.ClientSession() as session:
+                kwargs = {
+                    'headers': self.headers,
+                    'params': params
+                }
+                
+                if data and method in ['POST', 'PUT', 'PATCH']:
+                    kwargs['json'] = data
+                
+                async with session.request(method, url, **kwargs) as response:
+                    response_data = await response.text()
+                    
+                    # Try to parse as JSON
+                    try:
+                        response_data = json.loads(response_data)
+                    except:
+                        pass  # Keep as text if not JSON
+                    
+                    return ToolResult(
+                        success=response.status < 400,
+                        result={
+                            'status_code': response.status,
+                            'data': response_data,
+                            'headers': dict(response.headers)
+                        },
+                        metadata={
+                            'url': url,
+                            'method': method
+                        }
+                    )
+        
+        except Exception as e:
+            return ToolResult(
+                success=False,
+                result=None,
+                error=f"API request failed: {str(e)}"
+            )
+    
+    def get_schema(self) -> Dict[str, Any]:
+        return {
+            'type': 'object',
+            'properties': {
+                'method': {
+                    'type': 'string',
+                    'enum': ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+                    'default': 'GET'
+                },
+                'endpoint': {
+                    'type': 'string',
+                    'description': 'API endpoint path'
+                },
+                'data': {
+                    'type': 'object',
+                    'description': 'Request body data'
+                },
+                'params': {
+                    'type': 'object',
+                    'description': 'Query parameters'
+                }
+            },
+            'required': ['endpoint']
+        }
+
+# Usage example
+async def demo_api_tool():
+    # Create API tool for JSONPlaceholder
+    api_tool = APIIntegrationTool(
+        base_url="https://jsonplaceholder.typicode.com",
+        headers={"Content-Type": "application/json"}
+    )
+    
+    # Get posts
+    result = await api_tool.execute({
+        'method': 'GET',
+        'endpoint': 'posts',
+        'params': {'_limit': 5}
+    })
+    
+    print("API Result:", result.result)
+```
+
+```python Database Tool
+import asyncio
+import aiosqlite
+from typing import List, Dict, Any
+
+class DatabaseTool(AgentTool):
+    def __init__(self, db_path: str):
+        super().__init__(
+            name="database",
+            description="Execute database queries"
+        )
+        self.db_path = db_path
+    
+    async def execute(self, parameters: Dict[str, Any]) -> ToolResult:
+        operation = parameters.get('operation')
+        query = parameters.get('query')
+        params = parameters.get('params', [])
+        
+        try:
+            async with aiosqlite.connect(self.db_path) as db:
+                if operation == 'select':
+                    result = await self._execute_select(db, query, params)
+                elif operation == 'insert':
+                    result = await self._execute_insert(db, query, params)
+                elif operation == 'update':
+                    result = await self._execute_update(db, query, params)
+                elif operation == 'delete':
+                    result = await self._execute_delete(db, query, params)
+                elif operation == 'create_table':
+                    result = await self._execute_create_table(db, query)
+                else:
+                    return ToolResult(
+                        success=False,
+                        result=None,
+                        error=f"Unknown operation: {operation}"
+                    )
+                
+                return ToolResult(success=True, result=result)
+        
+        except Exception as e:
+            return ToolResult(
+                success=False,
+                result=None,
+                error=f"Database error: {str(e)}"
+            )
+    
+    async def _execute_select(self, db, query: str, params: List) -> List[Dict]:
+        cursor = await db.execute(query, params)
+        rows = await cursor.fetchall()
+        
+        # Get column names
+        columns = [description[0] for description in cursor.description]
+        
+        # Convert to list of dictionaries
+        return [dict(zip(columns, row)) for row in rows]
+    
+    async def _execute_insert(self, db, query: str, params: List) -> Dict:
+        cursor = await db.execute(query, params)
+        await db.commit()
+        return {
+            'rows_affected': cursor.rowcount,
+            'last_row_id': cursor.lastrowid
+        }
+    
+    async def _execute_update(self, db, query: str, params: List) -> Dict:
+        cursor = await db.execute(query, params)
+        await db.commit()
+        return {'rows_affected': cursor.rowcount}
+    
+    async def _execute_delete(self, db, query: str, params: List) -> Dict:
+        cursor = await db.execute(query, params)
+        await db.commit()
+        return {'rows_affected': cursor.rowcount}
+    
+    async def _execute_create_table(self, db, query: str) -> Dict:
+        await db.execute(query)
+        await db.commit()
+        return {'table_created': True}
+    
+    def get_schema(self) -> Dict[str, Any]:
+        return {
+            'type': 'object',
+            'properties': {
+                'operation': {
+                    'type': 'string',
+                    'enum': ['select', 'insert', 'update', 'delete', 'create_table']
+                },
+                'query': {
+                    'type': 'string',
+                    'description': 'SQL query to execute'
+                },
+                'params': {
+                    'type': 'array',
+                    'description': 'Query parameters',
+                    'default': []
+                }
+            },
+            'required': ['operation', 'query']
+        }
+
+# Usage example
+async def demo_database_tool():
+    db_tool = DatabaseTool('/tmp/test.db')
+    
+    # Create table
+    await db_tool.execute({
+        'operation': 'create_table',
+        'query': '''
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY,
+                name TEXT NOT NULL,
+                email TEXT UNIQUE
+            )
+        '''
+    })
+    
+    # Insert data
+    await db_tool.execute({
+        'operation': 'insert',
+        'query': 'INSERT INTO users (name, email) VALUES (?, ?)',
+        'params': ['Alice', 'alice@example.com']
+    })
+    
+    # Select data
+    result = await db_tool.execute({
+        'operation': 'select',
+        'query': 'SELECT * FROM users WHERE name = ?',
+        'params': ['Alice']
+    })
+    
+    print("Database result:", result.result)
+```
+
+```python Custom Business Logic Tool
+from datetime import datetime, timedelta
+import calendar
+
+class BusinessLogicTool(AgentTool):
+    def __init__(self):
+        super().__init__(
+            name="business_logic",
+            description="Execute custom business logic operations"
+        )
+    
+    async def execute(self, parameters: Dict[str, Any]) -> ToolResult:
+        operation = parameters.get('operation')
+        
+        try:
+            if operation == 'calculate_business_days':
+                result = self._calculate_business_days(
+                    parameters.get('start_date'),
+                    parameters.get('end_date')
+                )
+            elif operation == 'validate_email':
+                result = self._validate_email(parameters.get('email'))
+            elif operation == 'format_currency':
+                result = self._format_currency(
+                    parameters.get('amount'),
+                    parameters.get('currency', 'USD')
+                )
+            elif operation == 'calculate_discount':
+                result = self._calculate_discount(
+                    parameters.get('original_price'),
+                    parameters.get('discount_percent')
+                )
+            else:
+                return ToolResult(
+                    success=False,
+                    result=None,
+                    error=f"Unknown operation: {operation}"
+                )
+            
+            return ToolResult(success=True, result=result)
+        
+        except Exception as e:
+            return ToolResult(
+                success=False,
+                result=None,
+                error=str(e)
+            )
+    
+    def _calculate_business_days(self, start_date: str, end_date: str) -> Dict:
+        """Calculate business days between two dates"""
+        start = datetime.strptime(start_date, '%Y-%m-%d')
+        end = datetime.strptime(end_date, '%Y-%m-%d')
+        
+        business_days = 0
+        current = start
+        
+        while current <= end:
+            if current.weekday() < 5:  # Monday = 0, Sunday = 6
+                business_days += 1
+            current += timedelta(days=1)
+        
+        return {
+            'business_days': business_days,
+            'start_date': start_date,
+            'end_date': end_date
+        }
+    
+    def _validate_email(self, email: str) -> Dict:
+        """Simple email validation"""
+        import re
+        
+        pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        is_valid = bool(re.match(pattern, email))
+        
+        return {
+            'email': email,
+            'is_valid': is_valid,
+            'domain': email.split('@')[1] if '@' in email else None
+        }
+    
+    def _format_currency(self, amount: float, currency: str) -> Dict:
+        """Format currency amount"""
+        currency_symbols = {
+            'USD': '$',
+            'EUR': '€',
+            'GBP': '£',
+            'JPY': '¥'
+        }
+        
+        symbol = currency_symbols.get(currency, currency)
+        formatted = f"{symbol}{amount:,.2f}"
+        
+        return {
+            'amount': amount,
+            'currency': currency,
+            'formatted': formatted
+        }
+    
+    def _calculate_discount(self, original_price: float, discount_percent: float) -> Dict:
+        """Calculate discounted price"""
+        discount_amount = original_price * (discount_percent / 100)
+        final_price = original_price - discount_amount
+        
+        return {
+            'original_price': original_price,
+            'discount_percent': discount_percent,
+            'discount_amount': discount_amount,
+            'final_price': final_price,
+            'savings': discount_amount
+        }
+    
+    def get_schema(self) -> Dict[str, Any]:
+        return {
+            'type': 'object',
+            'properties': {
+                'operation': {
+                    'type': 'string',
+                    'enum': [
+                        'calculate_business_days',
+                        'validate_email',
+                        'format_currency',
+                        'calculate_discount'
+                    ]
+                },
+                'start_date': {'type': 'string'},
+                'end_date': {'type': 'string'},
+                'email': {'type': 'string'},
+                'amount': {'type': 'number'},
+                'currency': {'type': 'string'},
+                'original_price': {'type': 'number'},
+                'discount_percent': {'type': 'number'}
+            },
+            'required': ['operation']
+        }
+```
+
+</CodeGroup>
+
+## Tool Integration Patterns
+
+### Automatic Tool Detection
+
+```python
+import re
+import json
+
+class SmartToolAgent:
+    def __init__(self, agent, tool_manager):
+        self.agent = agent
+        self.tool_manager = tool_manager
+    
+    async def smart_ask(self, question: str) -> str:
+        """Automatically detect and use appropriate tools"""
+        # First, get agent's initial response
+        response = await self.agent.ask(question)
+        
+        # Analyze the response for tool opportunities
+        tool_suggestions = self._analyze_for_tools(question, response)
+        
+        if tool_suggestions:
+            # Execute suggested tools
+            for tool_name, params in tool_suggestions:
+                result = await self.tool_manager.execute_tool(tool_name, params)
+                if result.success:
+                    # Ask agent to incorporate tool result
+                    follow_up = f"""
+                    Original question: {question}
+                    My initial response: {response}
+                    
+                    I used the {tool_name} tool and got: {result.result}
+                    
+                    Please provide an updated, complete answer.
+                    """
+                    response = await self.agent.ask(follow_up)
+        
+        return response
+    
+    def _analyze_for_tools(self, question: str, response: str) -> List[tuple]:
+        """Analyze question and response for tool opportunities"""
+        suggestions = []
+        
+        # Math detection
+        math_patterns = [
+            r'calculate|compute|what is \d+',
+            r'\d+\s*[\+\-\*\/\^]\s*\d+',
+            r'square root|sqrt|sin|cos|tan'
+        ]
+        
+        if any(re.search(pattern, question, re.IGNORECASE) for pattern in math_patterns):
+            # Extract mathematical expression
+            math_expr = self._extract_math_expression(question)
+            if math_expr:
+                suggestions.append(('calculator', {'expression': math_expr}))
+        
+        # File operation detection
+        file_patterns = [
+            r'read file|check file|file exists',
+            r'write to file|save to file',
+            r'list directory|list files'
+        ]
+        
+        if any(re.search(pattern, question, re.IGNORECASE) for pattern in file_patterns):
+            # This would need more sophisticated parsing
+            pass
+        
+        return suggestions
+    
+    def _extract_math_expression(self, text: str) -> str:
+        """Extract mathematical expression from text"""
+        # Simple extraction - in practice, this would be more sophisticated
+        math_pattern = r'(\d+(?:\.\d+)?\s*[\+\-\*\/\^]\s*\d+(?:\.\d+)?)'
+        match = re.search(math_pattern, text)
+        return match.group(1) if match else None
+```
+
+### Tool Chaining
+
+```python
+class ToolChain:
+    def __init__(self, tool_manager):
+        self.tool_manager = tool_manager
+        self.chain_steps = []
+    
+    def add_step(self, tool_name: str, parameters: Dict[str, Any], 
+                 result_mapping: Dict[str, str] = None):
+        """Add a step to the tool chain"""
+        self.chain_steps.append({
+            'tool_name': tool_name,
+            'parameters': parameters,
+            'result_mapping': result_mapping or {}
+        })
+    
+    async def execute_chain(self, initial_data: Dict[str, Any] = None) -> List[ToolResult]:
+        """Execute the entire tool chain"""
+        results = []
+        context = initial_data or {}
+        
+        for step in self.chain_steps:
+            # Substitute context variables in parameters
+            parameters = self._substitute_parameters(step['parameters'], context)
+            
+            # Execute tool
+            result = await self.tool_manager.execute_tool(
+                step['tool_name'], 
+                parameters
+            )
+            
+            results.append(result)
+            
+            # Update context with result
+            if result.success and step['result_mapping']:
+                for result_key, context_key in step['result_mapping'].items():
+                    if hasattr(result.result, result_key):
+                        context[context_key] = getattr(result.result, result_key)
+                    elif isinstance(result.result, dict) and result_key in result.result:
+                        context[context_key] = result.result[result_key]
+        
+        return results
+    
+    def _substitute_parameters(self, parameters: Dict[str, Any], 
+                             context: Dict[str, Any]) -> Dict[str, Any]:
+        """Substitute context variables in parameters"""
+        substituted = {}
+        
+        for key, value in parameters.items():
+            if isinstance(value, str) and value.startswith('${') and value.endswith('}'):
+                # Variable substitution
+                var_name = value[2:-1]
+                substituted[key] = context.get(var_name, value)
+            else:
+                substituted[key] = value
+        
+        return substituted
+
+# Usage example
+async def demo_tool_chain():
+    tool_manager = ToolManager()
+    tool_manager.register_tool(CalculatorTool())
+    tool_manager.register_tool(FileOperationsTool())
+    
+    # Create a chain: calculate something, then save to file
+    chain = ToolChain(tool_manager)
+    
+    chain.add_step(
+        'calculator',
+        {'expression': '${calculation}'},
+        {'result': 'calc_result'}
+    )
+    
+    chain.add_step(
+        'file_operations',
+        {
+            'operation': 'write',
+            'file_path': '/tmp/calculation_result.txt',
+            'content': 'Result: ${calc_result}'
+        }
+    )
+    
+    # Execute chain
+    results = await chain.execute_chain({'calculation': '2 + 2 * 3'})
+    
+    for i, result in enumerate(results):
+        print(f"Step {i+1}: {result.success}, {result.result}")
+```
+
+## Best Practices
+
+1. **Security**: Validate all tool parameters and restrict file system access
+2. **Error Handling**: Implement comprehensive error handling in tools
+3. **Documentation**: Provide clear schemas and descriptions for tools
+4. **Performance**: Cache tool results when appropriate
+5. **Modularity**: Design tools to be reusable and composable
+6. **Testing**: Write unit tests for all custom tools
+
+## Next Steps
+
+- [Agent Creation](/api-reference-python/agent/create)
+- [Agent Execution](/api-reference-python/agent/execute)
+- [Memory Integration](/api-reference-python/memory/store)

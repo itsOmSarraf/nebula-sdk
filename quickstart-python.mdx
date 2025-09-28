@@ -1,0 +1,372 @@
+# Python Quickstart
+
+Get started with the Nebula SDK Python library in just a few minutes.
+
+## Installation
+
+<CodeGroup>
+
+```bash pip
+pip install nebula-sdk
+```
+
+```bash poetry
+poetry add nebula-sdk
+```
+
+```bash conda
+conda install -c conda-forge nebula-sdk
+```
+
+</CodeGroup>
+
+## Basic Setup
+
+First, import and initialize the SDK:
+
+```python
+import asyncio
+from nebula_sdk import create_agent
+
+async def main():
+    # Create a pre-configured agent with 0G network
+    agent = await create_agent({
+        'name': 'My Assistant',
+        'provider_address': '0xf07240Efa67755B5311bc75784a061eDB47165Dd',  # llama-3.3-70b-instruct
+        'memory_bucket': 'my-agent-memory',
+        'private_key': 'your-private-key'
+    })
+    
+    await agent.init()
+    print("Agent initialized successfully!")
+
+# Run the async function
+asyncio.run(main())
+```
+
+## Your First Chat
+
+Create a simple chat interaction:
+
+```python
+import asyncio
+from nebula_sdk import create_agent
+
+async def basic_chat():
+    agent = await create_agent({
+        'name': 'Chat Assistant',
+        'provider_address': '0xf07240Efa67755B5311bc75784a061eDB47165Dd',
+        'memory_bucket': 'chat-memory',
+        'private_key': 'your-private-key'
+    })
+    
+    await agent.init()
+    
+    # Set system prompt for the agent
+    agent.set_system_prompt('You are a helpful AI assistant.')
+    
+    # Ask a question
+    response = await agent.ask('Hello, how can you help me today?')
+    print(response)
+
+asyncio.run(basic_chat())
+```
+
+## Streaming Chat
+
+For real-time responses, use streaming:
+
+```python
+import asyncio
+from nebula_sdk import create_agent
+
+async def streaming_chat():
+    agent = await create_agent({
+        'name': 'Streaming Assistant',
+        'provider_address': '0xf07240Efa67755B5311bc75784a061eDB47165Dd',
+        'memory_bucket': 'streaming-memory',
+        'private_key': 'your-private-key'
+    })
+    
+    await agent.init()
+    agent.set_system_prompt('You are a creative storyteller.')
+    
+    def handle_chunk(chunk: str):
+        print(chunk, end='', flush=True)
+    
+    response = await agent.stream_chat(
+        'Tell me a story about AI',
+        handle_chunk
+    )
+    
+    print(f'\n\nComplete story length: {len(response)} characters')
+
+asyncio.run(streaming_chat())
+```
+
+## Adding Memory
+
+Enhance your chat with persistent memory:
+
+```python
+import asyncio
+from nebula_sdk import create_agent
+
+async def chat_with_memory():
+    agent = await create_agent({
+        'name': 'Memory Assistant',
+        'provider_address': '0xf07240Efa67755B5311bc75784a061eDB47165Dd',
+        'memory_bucket': 'memory-demo',
+        'private_key': 'your-private-key'
+    })
+    
+    await agent.init()
+    
+    # Store user preferences in persistent memory
+    await agent.remember('user_preferences', {
+        'language': 'Python',
+        'experience_level': 'intermediate',
+        'interests': ['AI', 'web development', 'data science']
+    })
+    
+    # The agent automatically uses memory context in conversations
+    response = await agent.chat_with_context(
+        'Remember my preferences and help me with a coding question'
+    )
+    
+    print(response)
+    
+    # Retrieve stored preferences
+    preferences = await agent.recall('user_preferences')
+    print(f"\nStored preferences: {preferences}")
+
+asyncio.run(chat_with_memory())
+```
+
+## Creating an Agent with Context
+
+Build an agent that maintains conversation context:
+
+```python
+import asyncio
+from nebula_sdk import create_agent
+
+async def contextual_agent():
+    agent = await create_agent({
+        'name': 'Contextual Assistant',
+        'provider_address': '0xf07240Efa67755B5311bc75784a061eDB47165Dd',
+        'memory_bucket': 'contextual-memory',
+        'private_key': 'your-private-key'
+    })
+    
+    await agent.init()
+    
+    # Set up the agent's behavior
+    agent.set_system_prompt('''
+    You are a helpful programming assistant. When users ask questions:
+    1. Remember the context of our conversation
+    2. Provide clear, practical examples
+    3. Ask follow-up questions when needed
+    4. Reference previous topics when relevant
+    ''')
+    
+    # Have a multi-turn conversation
+    print("=== Conversation Start ===")
+    
+    response1 = await agent.chat_with_context('I want to learn Python')
+    print(f"Agent: {response1}")
+    
+    response2 = await agent.chat_with_context('What should I start with?')
+    print(f"Agent: {response2}")
+    
+    response3 = await agent.chat_with_context('Can you show me an example?')
+    print(f"Agent: {response3}")
+    
+    # Save the conversation for future reference
+    conversation_id = await agent.save_conversation('python_learning_session')
+    print(f"\nConversation saved with ID: {conversation_id}")
+
+asyncio.run(contextual_agent())
+```
+
+## Advanced Configuration
+
+Customize your agent with advanced settings:
+
+```python
+import asyncio
+from nebula_sdk import create_agent
+
+async def advanced_agent():
+    agent = await create_agent({
+        'name': 'Advanced Assistant',
+        'provider_address': '0x3feE5a4dd5FDb8a32dDA97Bed899830605dBD9D3',  # deepseek-r1-70b for reasoning
+        'memory_bucket': 'advanced-memory',
+        'private_key': 'your-private-key',
+        'rpc_url': 'https://evmrpc-testnet.0g.ai',
+        'indexer_rpc': 'https://indexer-storage-testnet-turbo.0g.ai',
+        'kv_rpc': 'http://3.101.147.150:6789',
+        'max_ephemeral_messages': 100,  # Keep more conversation history
+        'temperature': 0.3,  # More focused responses
+        'max_tokens': 2000   # Longer responses
+    })
+    
+    await agent.init()
+    
+    # Configure for complex reasoning tasks
+    agent.set_system_prompt('''
+    You are an advanced AI assistant specialized in problem-solving and analysis.
+    When approaching problems:
+    1. Break them down into smaller components
+    2. Consider multiple perspectives
+    3. Show your reasoning process
+    4. Provide actionable recommendations
+    ''')
+    
+    # Test with a complex question
+    response = await agent.ask('''
+    I'm building a web application that needs to handle 10,000 concurrent users.
+    What architecture considerations should I keep in mind, and what technologies
+    would you recommend for the backend, database, and deployment?
+    ''')
+    
+    print(response)
+    
+    # Get agent statistics
+    stats = agent.get_stats()
+    print(f"\nAgent Stats:")
+    print(f"- Name: {stats['name']}")
+    print(f"- Messages in memory: {stats['memory']['ephemeral_messages']}")
+    print(f"- Temperature: {stats['chat']['temperature']}")
+    print(f"- Max tokens: {stats['chat']['max_tokens']}")
+
+asyncio.run(advanced_agent())
+```
+
+## Error Handling
+
+Implement proper error handling for production use:
+
+```python
+import asyncio
+from nebula_sdk import create_agent, SDKError
+
+async def robust_agent():
+    try:
+        agent = await create_agent({
+            'name': 'Robust Assistant',
+            'provider_address': '0xf07240Efa67755B5311bc75784a061eDB47165Dd',
+            'memory_bucket': 'robust-memory',
+            'private_key': 'your-private-key'
+        })
+        
+        await agent.init()
+        
+        # Test the agent with error handling
+        response = await agent.ask('Explain quantum computing')
+        print(f"Success: {response}")
+        
+    except SDKError as e:
+        print(f"SDK Error: {e.message}")
+        print(f"Error Code: {e.code}")
+        if e.status_code:
+            print(f"HTTP Status: {e.status_code}")
+    
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+
+asyncio.run(robust_agent())
+```
+
+## Environment Configuration
+
+Set up environment variables for easier configuration:
+
+```python
+import os
+import asyncio
+from nebula_sdk import create_agent
+
+# Set environment variables (or use a .env file)
+os.environ['ZG_PRIVATE_KEY'] = 'your-private-key'
+os.environ['ZG_RPC_URL'] = 'https://evmrpc-testnet.0g.ai'
+os.environ['ZG_INDEXER_RPC'] = 'https://indexer-storage-testnet-turbo.0g.ai'
+os.environ['ZG_KV_RPC'] = 'http://3.101.147.150:6789'
+
+async def env_configured_agent():
+    # Configuration will use environment variables
+    agent = await create_agent({
+        'name': 'Environment Agent',
+        'provider_address': '0xf07240Efa67755B5311bc75784a061eDB47165Dd',
+        'memory_bucket': 'env-memory',
+        'private_key': os.environ['ZG_PRIVATE_KEY']  # Explicitly use env var
+    })
+    
+    await agent.init()
+    
+    response = await agent.ask('Hello from the environment-configured agent!')
+    print(response)
+
+asyncio.run(env_configured_agent())
+```
+
+## Next Steps
+
+Now that you have the basics down, explore more advanced features:
+
+<CardGroup cols={2}>
+  <Card
+    title="Python Chat API"
+    icon="comments"
+    href="/api-reference-python/chat/create"
+  >
+    Learn about advanced chat features and streaming
+  </Card>
+  <Card
+    title="Python Memory System"
+    icon="brain"
+    href="/api-reference-python/memory/store"
+  >
+    Dive deep into persistent memory and data storage
+  </Card>
+  <Card
+    title="Python Agent Framework"
+    icon="robot"
+    href="/api-reference-python/agent/create"
+  >
+    Build sophisticated AI agents with custom behaviors
+  </Card>
+  <Card
+    title="Agent Tools"
+    icon="wrench"
+    href="/api-reference-python/agent/tools"
+  >
+    Extend agents with custom tools and integrations
+  </Card>
+</CardGroup>
+
+## Available Models
+
+The Nebula SDK connects to models running on the 0G decentralized compute network:
+
+| Model | Provider Address | Best For | Verification |
+|-------|------------------|----------|--------------|
+| `llama-3.3-70b-instruct` | `0xf07240Efa67755B5311bc75784a061eDB47165Dd` | General AI tasks, conversations, creative writing | TEE (TeeML) |
+| `deepseek-r1-70b` | `0x3feE5a4dd5FDb8a32dDA97Bed899830605dBD9D3` | Complex reasoning, problem-solving, analysis | TEE (TeeML) |
+
+## Examples Repository
+
+Check out complete examples in our [GitHub repository](https://github.com/0glabs/nebula-sdk-python/tree/main/examples):
+
+- [Basic Usage](https://github.com/0glabs/nebula-sdk-python/blob/main/examples/basic_usage.py)
+- [Streaming Chat](https://github.com/0glabs/nebula-sdk-python/blob/main/examples/streaming_chat.py)
+- [Advanced Memory](https://github.com/0glabs/nebula-sdk-python/blob/main/examples/advanced_memory.py)
+- [Multi-Agent System](https://github.com/0glabs/nebula-sdk-python/blob/main/examples/multi_agent.py)
+- [Web Integration](https://github.com/0glabs/nebula-sdk-python/blob/main/examples/web_integration.py)
+
+## Community and Support
+
+- **Documentation**: [https://docs.0g.ai](https://docs.0g.ai)
+- **GitHub**: [https://github.com/0glabs/nebula-sdk-python](https://github.com/0glabs/nebula-sdk-python)
+- **Discord**: [https://discord.gg/0g](https://discord.gg/0g)
+- **Email**: support@0g.ai

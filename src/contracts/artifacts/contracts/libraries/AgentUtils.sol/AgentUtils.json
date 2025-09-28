@@ -1,0 +1,31 @@
+{
+  "_format": "hh-sol-artifact-1",
+  "contractName": "AgentUtils",
+  "sourceName": "contracts/libraries/AgentUtils.sol",
+  "abi": [
+    {
+      "inputs": [],
+      "name": "DescriptionTooLong",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "InvalidAddress",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "NameEmpty",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "NameTooLong",
+      "type": "error"
+    }
+  ],
+  "bytecode": "0x60808060405234601757603a9081601d823930815050f35b600080fdfe600080fdfea2646970667358221220e409813ab48826018f45d585e41ea55eef620661bfc750ef82633e94c890e75c64736f6c63430008140033",
+  "deployedBytecode": "0x600080fdfea2646970667358221220e409813ab48826018f45d585e41ea55eef620661bfc750ef82633e94c890e75c64736f6c63430008140033",
+  "linkReferences": {},
+  "deployedLinkReferences": {}
+}

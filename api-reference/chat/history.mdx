@@ -44,7 +44,7 @@ interface ChatMessage {
 <CodeGroup>
 
 ```typescript Basic History Management
-import { Chat } from '0g-ai-sdk';
+import { Chat } from 'nebula-sdk';
 
 const chat = new Chat({
   apiKey: 'your-api-key',
@@ -73,7 +73,7 @@ chat.clearHistory();
 ```
 
 ```typescript Persistent History with Memory
-import { Chat, Memory } from '0g-ai-sdk';
+import { Chat, Memory } from 'nebula-sdk';
 
 const chat = new Chat({ apiKey: 'your-api-key' });
 const memory = new Memory({ storageKey: 'user-session-123' });

@@ -1,0 +1,637 @@
+# Search Memory
+
+Search through stored data and conversation history using various search methods.
+
+## Overview
+
+The Memory system provides powerful search capabilities to find relevant information across both persistent storage and conversation history. This enables building intelligent applications that can recall context and find related information efficiently.
+
+## Search Methods
+
+### Basic Search
+
+While the current implementation doesn't include built-in search functionality, you can implement search patterns using the existing memory methods:
+
+```python
+async def search_memory(agent, query, keys_to_search):
+    """Basic text search across stored data"""
+    results = []
+    
+    for key in keys_to_search:
+        data = await agent.recall(key)
+        if data and isinstance(data, (str, dict, list)):
+            if search_in_data(data, query):
+                results.append({'key': key, 'data': data})
+    
+    return results
+
+def search_in_data(data, query):
+    """Search for query in various data types"""
+    query_lower = query.lower()
+    
+    if isinstance(data, str):
+        return query_lower in data.lower()
+    elif isinstance(data, dict):
+        return any(search_in_data(value, query) for value in data.values())
+    elif isinstance(data, list):
+        return any(search_in_data(item, query) for item in data)
+    
+    return False
+```
+
+### Conversation Search
+
+Search through conversation messages:
+
+```python
+def search_messages(memory, query, role=None):
+    """Search through conversation messages"""
+    messages = memory.get_messages()
+    results = []
+    
+    for i, message in enumerate(messages):
+        # Filter by role if specified
+        if role and message.role != role:
+            continue
+        
+        # Search in message content
+        if query.lower() in message.content.lower():
+            results.append({
+                'index': i,
+                'message': message,
+                'timestamp': message.timestamp
+            })
+    
+    return results
+```
+
+## Examples
+
+<CodeGroup>
+
+```python Basic Memory Search
+import asyncio
+from zg_ai_sdk import create_agent
+
+async def search_user_data(agent, search_term):
+    """Search across user-related data"""
+    # Define keys to search
+    user_keys = [
+        'user_profile',
+        'user_preferences', 
+        'user_settings',
+        'user_history',
+        'user_projects'
+    ]
+    
+    results = []
+    
+    for key in user_keys:
+        data = await agent.recall(key)
+        if data and search_in_content(data, search_term):
+            results.append({
+                'key': key,
+                'data': data,
+                'relevance': calculate_relevance(data, search_term)
+            })
+    
+    # Sort by relevance
+    results.sort(key=lambda x: x['relevance'], reverse=True)
+    return results
+
+def search_in_content(data, term):
+    """Check if term exists in data"""
+    term_lower = term.lower()
+    
+    if isinstance(data, str):
+        return term_lower in data.lower()
+    elif isinstance(data, dict):
+        for key, value in data.items():
+            if (term_lower in str(key).lower() or 
+                search_in_content(value, term)):
+                return True
+    elif isinstance(data, list):
+        return any(search_in_content(item, term) for item in data)
+    
+    return False
+
+def calculate_relevance(data, term):
+    """Simple relevance scoring"""
+    if isinstance(data, str):
+        return data.lower().count(term.lower())
+    elif isinstance(data, dict):
+        return sum(calculate_relevance(value, term) for value in data.values())
+    elif isinstance(data, list):
+        return sum(calculate_relevance(item, term) for item in data)
+    return 0
+
+async def main():
+    agent = await create_agent({
+        'name': 'Search Assistant',
+        'provider_address': '0xf07240Efa67755B5311bc75784a061eDB47165Dd',
+        'memory_bucket': 'search-demo',
+        'private_key': 'your-private-key'
+    })
+    
+    # Store sample data
+    await agent.remember('user_profile', {
+        'name': 'Alice Johnson',
+        'skills': ['Python', 'Machine Learning', 'Data Science'],
+        'bio': 'Passionate about AI and Python development'
+    })
+    
+    await agent.remember('user_projects', [
+        {'name': 'ML Pipeline', 'tech': 'Python, TensorFlow'},
+        {'name': 'Web Scraper', 'tech': 'Python, BeautifulSoup'},
+        {'name': 'Data Viz', 'tech': 'Python, Matplotlib'}
+    ])
+    
+    # Search for Python-related content
+    results = await search_user_data(agent, 'Python')
+    
+    print("Search results for 'Python':")
+    for result in results:
+        print(f"Key: {result['key']}, Relevance: {result['relevance']}")
+        print(f"Data: {result['data']}")
+        print("---")
+
+asyncio.run(main())
+```
+
+```python Conversation Search
+import asyncio
+from datetime import datetime, timedelta
+from zg_ai_sdk import create_agent, ChatMessage
+
+def search_conversation_history(memory, query, time_range=None, role=None):
+    """Advanced conversation search with filters"""
+    messages = memory.get_messages()
+    results = []
+    
+    for i, message in enumerate(messages):
+        # Time filter
+        if time_range and message.timestamp:
+            if message.timestamp < time_range['start'] or message.timestamp > time_range['end']:
+                continue
+        
+        # Role filter
+        if role and message.role != role:
+            continue
+        
+        # Content search
+        if query.lower() in message.content.lower():
+            # Calculate context window
+            context_start = max(0, i - 2)
+            context_end = min(len(messages), i + 3)
+            context = messages[context_start:context_end]
+            
+            results.append({
+                'match_index': i,
+                'message': message,
+                'context': context,
+                'timestamp': message.timestamp
+            })
+    
+    return results
+
+async def main():
+    agent = await create_agent({
+        'name': 'Conversation Search Assistant',
+        'provider_address': '0xf07240Efa67755B5311bc75784a061eDB47165Dd',
+        'memory_bucket': 'conversation-search',
+        'private_key': 'your-private-key'
+    })
+    
+    # Simulate a conversation
+    conversation = [
+        "Hello, I'm working on a Python project",
+        "I need help with machine learning algorithms",
+        "Specifically, I'm interested in neural networks",
+        "Can you explain backpropagation?",
+        "That's very helpful, thank you!",
+        "Now I'm curious about deep learning frameworks",
+        "Which Python libraries would you recommend?"
+    ]
+    
+    for msg in conversation:
+        await agent.ask(msg)
+    
+    # Search conversation
+    ml_results = search_conversation_history(
+        agent.memory, 
+        'machine learning',
+        role='user'
+    )
+    
+    python_results = search_conversation_history(
+        agent.memory,
+        'Python'
+    )
+    
+    print("Machine Learning mentions:")
+    for result in ml_results:
+        print(f"User said: {result['message'].content}")
+    
+    print("\nPython mentions:")
+    for result in python_results:
+        print(f"{result['message'].role}: {result['message'].content}")
+
+asyncio.run(main())
+```
+
+```python Semantic Search Implementation
+import asyncio
+from zg_ai_sdk import create_agent
+import re
+from collections import Counter
+
+class SemanticSearcher:
+    def __init__(self, agent):
+        self.agent = agent
+        self.stop_words = {'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by'}
+    
+    def extract_keywords(self, text):
+        """Extract keywords from text"""
+        if not isinstance(text, str):
+            text = str(text)
+        
+        # Simple keyword extraction
+        words = re.findall(r'\b\w+\b', text.lower())
+        keywords = [word for word in words if word not in self.stop_words and len(word) > 2]
+        return keywords
+    
+    def calculate_similarity(self, text1, text2):
+        """Calculate similarity between two texts"""
+        keywords1 = set(self.extract_keywords(text1))
+        keywords2 = set(self.extract_keywords(text2))
+        
+        if not keywords1 or not keywords2:
+            return 0.0
+        
+        intersection = keywords1.intersection(keywords2)
+        union = keywords1.union(keywords2)
+        
+        return len(intersection) / len(union) if union else 0.0
+    
+    async def semantic_search(self, query, keys_to_search, threshold=0.1):
+        """Perform semantic search across stored data"""
+        results = []
+        
+        for key in keys_to_search:
+            data = await self.agent.recall(key)
+            if data:
+                # Convert data to searchable text
+                searchable_text = self.data_to_text(data)
+                similarity = self.calculate_similarity(query, searchable_text)
+                
+                if similarity >= threshold:
+                    results.append({
+                        'key': key,
+                        'data': data,
+                        'similarity': similarity,
+                        'matched_keywords': self.get_matched_keywords(query, searchable_text)
+                    })
+        
+        # Sort by similarity
+        results.sort(key=lambda x: x['similarity'], reverse=True)
+        return results
+    
+    def data_to_text(self, data):
+        """Convert various data types to searchable text"""
+        if isinstance(data, str):
+            return data
+        elif isinstance(data, dict):
+            text_parts = []
+            for key, value in data.items():
+                text_parts.append(f"{key}: {self.data_to_text(value)}")
+            return " ".join(text_parts)
+        elif isinstance(data, list):
+            return " ".join(self.data_to_text(item) for item in data)
+        else:
+            return str(data)
+    
+    def get_matched_keywords(self, query, text):
+        """Get keywords that matched between query and text"""
+        query_keywords = set(self.extract_keywords(query))
+        text_keywords = set(self.extract_keywords(text))
+        return list(query_keywords.intersection(text_keywords))
+
+async def main():
+    agent = await create_agent({
+        'name': 'Semantic Search Assistant',
+        'provider_address': '0xf07240Efa67755B5311bc75784a061eDB47165Dd',
+        'memory_bucket': 'semantic-search',
+        'private_key': 'your-private-key'
+    })
+    
+    searcher = SemanticSearcher(agent)
+    
+    # Store diverse content
+    await agent.remember('article_1', {
+        'title': 'Introduction to Machine Learning',
+        'content': 'Machine learning is a subset of artificial intelligence that focuses on algorithms and statistical models.',
+        'tags': ['AI', 'ML', 'algorithms', 'data science']
+    })
+    
+    await agent.remember('article_2', {
+        'title': 'Python Web Development',
+        'content': 'Python is excellent for web development with frameworks like Django and Flask.',
+        'tags': ['Python', 'web', 'Django', 'Flask']
+    })
+    
+    await agent.remember('project_1', {
+        'name': 'Neural Network Implementation',
+        'description': 'A Python implementation of a neural network for image classification using TensorFlow.',
+        'technologies': ['Python', 'TensorFlow', 'Neural Networks', 'Computer Vision']
+    })
+    
+    # Perform semantic search
+    search_keys = ['article_1', 'article_2', 'project_1']
+    
+    # Search for AI-related content
+    ai_results = await searcher.semantic_search(
+        'artificial intelligence machine learning algorithms',
+        search_keys,
+        threshold=0.1
+    )
+    
+    print("AI-related search results:")
+    for result in ai_results:
+        print(f"Key: {result['key']}")
+        print(f"Similarity: {result['similarity']:.3f}")
+        print(f"Matched keywords: {result['matched_keywords']}")
+        print("---")
+
+asyncio.run(main())
+```
+
+```python Advanced Search with Indexing
+import asyncio
+from zg_ai_sdk import create_agent
+from collections import defaultdict
+import json
+
+class SearchIndex:
+    def __init__(self, agent):
+        self.agent = agent
+        self.index_key = 'search_index'
+    
+    async def build_index(self, data_keys):
+        """Build search index for faster lookups"""
+        index = defaultdict(set)
+        
+        for key in data_keys:
+            data = await self.agent.recall(key)
+            if data:
+                keywords = self.extract_keywords_from_data(data)
+                for keyword in keywords:
+                    index[keyword].add(key)
+        
+        # Convert sets to lists for JSON serialization
+        serializable_index = {k: list(v) for k, v in index.items()}
+        await self.agent.remember(self.index_key, serializable_index)
+        
+        return serializable_index
+    
+    async def search_with_index(self, query):
+        """Search using pre-built index"""
+        index = await self.agent.recall(self.index_key)
+        if not index:
+            return []
+        
+        query_keywords = self.extract_keywords(query)
+        matching_keys = set()
+        
+        for keyword in query_keywords:
+            if keyword in index:
+                matching_keys.update(index[keyword])
+        
+        # Retrieve and score results
+        results = []
+        for key in matching_keys:
+            data = await self.agent.recall(key)
+            if data:
+                score = self.calculate_score(query, data)
+                results.append({
+                    'key': key,
+                    'data': data,
+                    'score': score
+                })
+        
+        results.sort(key=lambda x: x['score'], reverse=True)
+        return results
+    
+    def extract_keywords(self, text):
+        """Extract keywords from text"""
+        import re
+        words = re.findall(r'\b\w+\b', text.lower())
+        return [word for word in words if len(word) > 2]
+    
+    def extract_keywords_from_data(self, data):
+        """Extract keywords from various data types"""
+        if isinstance(data, str):
+            return self.extract_keywords(data)
+        elif isinstance(data, dict):
+            keywords = []
+            for key, value in data.items():
+                keywords.extend(self.extract_keywords(str(key)))
+                keywords.extend(self.extract_keywords_from_data(value))
+            return keywords
+        elif isinstance(data, list):
+            keywords = []
+            for item in data:
+                keywords.extend(self.extract_keywords_from_data(item))
+            return keywords
+        else:
+            return self.extract_keywords(str(data))
+    
+    def calculate_score(self, query, data):
+        """Calculate relevance score"""
+        query_keywords = set(self.extract_keywords(query))
+        data_keywords = set(self.extract_keywords_from_data(data))
+        
+        if not query_keywords or not data_keywords:
+            return 0.0
+        
+        matches = query_keywords.intersection(data_keywords)
+        return len(matches) / len(query_keywords)
+
+async def main():
+    agent = await create_agent({
+        'name': 'Indexed Search Assistant',
+        'provider_address': '0xf07240Efa67755B5311bc75784a061eDB47165Dd',
+        'memory_bucket': 'indexed-search',
+        'private_key': 'your-private-key'
+    })
+    
+    search_index = SearchIndex(agent)
+    
+    # Store searchable content
+    content_keys = []
+    
+    documents = [
+        {
+            'key': 'doc_python_basics',
+            'data': {
+                'title': 'Python Programming Basics',
+                'content': 'Learn Python fundamentals including variables, functions, and control structures.',
+                'category': 'programming'
+            }
+        },
+        {
+            'key': 'doc_ml_intro',
+            'data': {
+                'title': 'Machine Learning Introduction',
+                'content': 'Introduction to machine learning concepts, algorithms, and applications.',
+                'category': 'data-science'
+            }
+        },
+        {
+            'key': 'doc_web_dev',
+            'data': {
+                'title': 'Web Development with Python',
+                'content': 'Build web applications using Python frameworks like Django and Flask.',
+                'category': 'web-development'
+            }
+        }
+    ]
+    
+    for doc in documents:
+        await agent.remember(doc['key'], doc['data'])
+        content_keys.append(doc['key'])
+    
+    # Build search index
+    print("Building search index...")
+    index = await search_index.build_index(content_keys)
+    print(f"Index built with {len(index)} keywords")
+    
+    # Perform searches
+    queries = [
+        'Python programming',
+        'machine learning algorithms',
+        'web development frameworks'
+    ]
+    
+    for query in queries:
+        print(f"\nSearching for: '{query}'")
+        results = await search_index.search_with_index(query)
+        
+        for result in results[:3]:  # Top 3 results
+            print(f"  {result['key']} (score: {result['score']:.3f})")
+            print(f"  Title: {result['data']['title']}")
+
+asyncio.run(main())
+```
+
+</CodeGroup>
+
+## Search Patterns
+
+### Fuzzy Search
+
+```python
+def fuzzy_match(text, query, threshold=0.6):
+    """Simple fuzzy string matching"""
+    from difflib import SequenceMatcher
+    
+    similarity = SequenceMatcher(None, text.lower(), query.lower()).ratio()
+    return similarity >= threshold
+
+async def fuzzy_search(agent, query, keys, threshold=0.6):
+    """Search with fuzzy matching"""
+    results = []
+    
+    for key in keys:
+        data = await agent.recall(key)
+        if data:
+            text = str(data)
+            if fuzzy_match(text, query, threshold):
+                results.append({'key': key, 'data': data})
+    
+    return results
+```
+
+### Multi-field Search
+
+```python
+async def multi_field_search(agent, query_dict, keys):
+    """Search across multiple fields with different criteria"""
+    results = []
+    
+    for key in keys:
+        data = await agent.recall(key)
+        if data and isinstance(data, dict):
+            match_score = 0
+            total_criteria = len(query_dict)
+            
+            for field, expected_value in query_dict.items():
+                if field in data:
+                    if isinstance(expected_value, str):
+                        if expected_value.lower() in str(data[field]).lower():
+                            match_score += 1
+                    elif data[field] == expected_value:
+                        match_score += 1
+            
+            if match_score > 0:
+                results.append({
+                    'key': key,
+                    'data': data,
+                    'match_ratio': match_score / total_criteria
+                })
+    
+    results.sort(key=lambda x: x['match_ratio'], reverse=True)
+    return results
+
+# Usage
+search_criteria = {
+    'category': 'programming',
+    'difficulty': 'beginner',
+    'language': 'python'
+}
+results = await multi_field_search(agent, search_criteria, content_keys)
+```
+
+### Time-based Search
+
+```python
+from datetime import datetime, timedelta
+
+def search_by_time_range(memory, start_time, end_time, query=None):
+    """Search messages within a time range"""
+    messages = memory.get_messages()
+    results = []
+    
+    for message in messages:
+        if message.timestamp and start_time <= message.timestamp <= end_time:
+            if query is None or query.lower() in message.content.lower():
+                results.append(message)
+    
+    return results
+
+# Search last 24 hours
+now = datetime.now()
+yesterday = now - timedelta(days=1)
+recent_messages = search_by_time_range(memory, yesterday, now, 'python')
+```
+
+## Performance Considerations
+
+1. **Indexing**: Build search indexes for frequently searched data
+2. **Caching**: Cache search results for repeated queries
+3. **Pagination**: Implement pagination for large result sets
+4. **Async Operations**: Use concurrent searches for multiple keys
+5. **Memory Usage**: Be mindful of memory usage with large datasets
+
+## Best Practices
+
+1. **Normalize Text**: Convert to lowercase and remove special characters
+2. **Use Keywords**: Extract meaningful keywords for better matching
+3. **Score Results**: Implement relevance scoring for better ranking
+4. **Handle Edge Cases**: Account for empty data and malformed content
+5. **User Feedback**: Allow users to refine searches based on results
+
+## Next Steps
+
+- [Store Memory](/api-reference-python/memory/store)
+- [Retrieve Memory](/api-reference-python/memory/retrieve)
+- [Agent Tools](/api-reference-python/agent/tools)

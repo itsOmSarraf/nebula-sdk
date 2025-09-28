@@ -20,7 +20,7 @@ The 0G Storage system provides decentralized, persistent storage for AI applicat
 The primary interface for interacting with the 0G storage network.
 
 ```typescript
-import { ZGStorageClient } from '0g-ai-sdk';
+import { ZGStorageClient } from 'nebula-sdk';
 
 const storage = new ZGStorageClient({
   rpcUrl: 'https://rpc.0g.ai',
@@ -329,7 +329,7 @@ class StorageBackedMemory {
 }
 
 // Usage with Memory system
-import { Memory } from '0g-ai-sdk';
+import { Memory } from 'nebula-sdk';
 
 const storageMemory = new StorageBackedMemory(storage, 'agent-memory');
 

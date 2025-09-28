@@ -1,0 +1,563 @@
+# Create Agent
+
+Create intelligent AI agents with memory and conversation capabilities using Python.
+
+## Overview
+
+The Agent class combines Chat, Memory, and Storage capabilities into a unified interface for building sophisticated AI applications. Agents maintain conversation context, store persistent data, and can be extended with custom tools and behaviors.
+
+## Constructor
+
+```python
+Agent(config: AgentConfig, broker: ZGComputeBroker, storage_client: ZGStorageClient)
+```
+
+### Parameters
+
+<ParamField path="config" type="AgentConfig" required>
+  Configuration object for the agent
+</ParamField>
+
+<ParamField path="broker" type="ZGComputeBroker" required>
+  The compute broker for connecting to 0G network
+</ParamField>
+
+<ParamField path="storage_client" type="ZGStorageClient" required>
+  The storage client for persistent memory
+</ParamField>
+
+### AgentConfig
+
+```python
+@dataclass
+class AgentConfig:
+    name: str
+    provider_address: str
+    memory_bucket: str
+    max_ephemeral_messages: int = 50
+    temperature: float = 0.7
+    max_tokens: int = 1000
+```
+
+## Convenience Function
+
+### create_agent()
+
+Create a pre-configured agent with default settings.
+
+```python
+async def create_agent(config: Dict[str, Any]) -> Agent
+```
+
+**Parameters:**
+- `config` (Dict[str, Any]): Agent configuration dictionary
+
+**Configuration Options:**
+- `name` (str): Agent name
+- `provider_address` (str): 0G network provider address
+- `memory_bucket` (str): Storage bucket for memory
+- `private_key` (str): Private key for blockchain operations
+- `rpc_url` (str, optional): Custom RPC endpoint
+- `indexer_rpc` (str, optional): Custom indexer endpoint
+- `kv_rpc` (str, optional): Custom KV storage endpoint
+- `max_ephemeral_messages` (int, optional): Max conversation history
+- `temperature` (float, optional): Response randomness (0.0-2.0)
+- `max_tokens` (int, optional): Maximum response length
+
+## Examples
+
+<CodeGroup>
+
+```python Basic Agent Creation
+import asyncio
+from zg_ai_sdk import create_agent
+
+async def main():
+    # Create a basic agent
+    agent = await create_agent({
+        'name': 'My Assistant',
+        'provider_address': '0xf07240Efa67755B5311bc75784a061eDB47165Dd',
+        'memory_bucket': 'my-agent-memory',
+        'private_key': 'your-private-key'
+    })
+    
+    # Initialize the agent
+    await agent.init()
+    
+    # Set system prompt
+    agent.set_system_prompt('You are a helpful AI assistant.')
+    
+    # Have a conversation
+    response = await agent.ask('Hello, what can you help me with?')
+    print(response)
+
+asyncio.run(main())
+```
+
+```python Advanced Agent Configuration
+import asyncio
+from zg_ai_sdk import create_agent
+
+async def main():
+    # Create agent with custom configuration
+    agent = await create_agent({
+        'name': 'Advanced Assistant',
+        'provider_address': '0x3feE5a4dd5FDb8a32dDA97Bed899830605dBD9D3',  # deepseek-r1-70b
+        'memory_bucket': 'advanced-memory',
+        'private_key': 'your-private-key',
+        'rpc_url': 'https://custom-rpc.0g.ai',
+        'indexer_rpc': 'https://custom-indexer.0g.ai',
+        'kv_rpc': 'https://custom-kv.0g.ai',
+        'max_ephemeral_messages': 100,
+        'temperature': 0.3,  # More focused responses
+        'max_tokens': 2000   # Longer responses
+    })
+    
+    await agent.init()
+    
+    # Configure for reasoning tasks
+    agent.set_system_prompt('''
+    You are an advanced reasoning assistant. When solving problems:
+    1. Break down complex problems into steps
+    2. Show your reasoning process
+    3. Verify your conclusions
+    4. Ask clarifying questions when needed
+    ''')
+    
+    # Test reasoning capability
+    response = await agent.ask('''
+    I have a dataset with 1000 samples and want to split it for machine learning.
+    What's the best way to split it for training, validation, and testing?
+    ''')
+    
+    print(response)
+
+asyncio.run(main())
+```
+
+```python Direct Agent Construction
+import asyncio
+from zg_ai_sdk import Agent, AgentConfig, ZGStorageClientImpl, create_zg_compute_network_broker
+from web3 import Web3
+
+async def main():
+    # Manual agent construction for full control
+    rpc_url = 'https://evmrpc-testnet.0g.ai'
+    indexer_rpc = 'https://indexer-storage-testnet-turbo.0g.ai'
+    kv_rpc = 'http://3.101.147.150:6789'
+    
+    # Create wallet and signer
+    w3 = Web3(Web3.HTTPProvider(rpc_url))
+    account = w3.eth.account.from_key('your-private-key')
+    
+    # Create storage client
+    storage_client = ZGStorageClientImpl(
+        indexer_rpc=indexer_rpc,
+        kv_rpc=kv_rpc,
+        rpc_url=rpc_url,
+        signer=account,
+        bucket='custom-memory'
+    )
+    
+    # Create compute broker
+    broker = create_zg_compute_network_broker(rpc_url)
+    
+    # Create agent configuration
+    config = AgentConfig(
+        name='Custom Agent',
+        provider_address='0xf07240Efa67755B5311bc75784a061eDB47165Dd',
+        memory_bucket='custom-memory',
+        max_ephemeral_messages=75,
+        temperature=0.8,
+        max_tokens=1500
+    )
+    
+    # Create agent
+    agent = Agent(config, broker, storage_client)
+    await agent.init()
+    
+    print(f"Agent '{agent.name}' created successfully!")
+    
+    # Test agent
+    response = await agent.ask('Tell me about yourself')
+    print(response)
+
+asyncio.run(main())
+```
+
+```python Multi-Agent System
+import asyncio
+from zg_ai_sdk import create_agent
+
+class MultiAgentSystem:
+    def __init__(self):
+        self.agents = {}
+    
+    async def create_specialist_agent(self, name, specialty, provider_address, private_key):
+        """Create a specialized agent"""
+        agent = await create_agent({
+            'name': name,
+            'provider_address': provider_address,
+            'memory_bucket': f'{name.lower().replace(" ", "-")}-memory',
+            'private_key': private_key,
+            'temperature': 0.7,
+            'max_tokens': 1500
+        })
+        
+        # Set specialized system prompt
+        prompts = {
+            'coding': 'You are an expert software developer. Provide clear, well-commented code examples and best practices.',
+            'research': 'You are a research assistant. Provide thorough, well-sourced information and analysis.',
+            'creative': 'You are a creative writing assistant. Help with storytelling, content creation, and creative projects.',
+            'analysis': 'You are a data analyst. Help interpret data, create insights, and suggest actionable recommendations.'
+        }
+        
+        agent.set_system_prompt(prompts.get(specialty, 'You are a helpful AI assistant.'))
+        await agent.init()
+        
+        self.agents[name] = agent
+        return agent
+    
+    async def route_query(self, query, agent_name=None):
+        """Route query to appropriate agent or let user choose"""
+        if agent_name and agent_name in self.agents:
+            return await self.agents[agent_name].ask(query)
+        
+        # Simple routing based on keywords
+        query_lower = query.lower()
+        
+        if any(word in query_lower for word in ['code', 'program', 'function', 'debug']):
+            agent_name = 'Coding Assistant'
+        elif any(word in query_lower for word in ['research', 'study', 'analyze', 'investigate']):
+            agent_name = 'Research Assistant'
+        elif any(word in query_lower for word in ['story', 'creative', 'write', 'content']):
+            agent_name = 'Creative Assistant'
+        elif any(word in query_lower for word in ['data', 'chart', 'statistics', 'trends']):
+            agent_name = 'Analysis Assistant'
+        else:
+            agent_name = list(self.agents.keys())[0]  # Default to first agent
+        
+        if agent_name in self.agents:
+            return await self.agents[agent_name].ask(query)
+        
+        return "No suitable agent found for this query."
+
+async def main():
+    system = MultiAgentSystem()
+    
+    # Create specialized agents
+    await system.create_specialist_agent(
+        'Coding Assistant', 
+        'coding',
+        '0xf07240Efa67755B5311bc75784a061eDB47165Dd',
+        'your-private-key'
+    )
+    
+    await system.create_specialist_agent(
+        'Research Assistant',
+        'research', 
+        '0x3feE5a4dd5FDb8a32dDA97Bed899830605dBD9D3',
+        'your-private-key'
+    )
+    
+    # Test routing
+    queries = [
+        "Write a Python function to calculate fibonacci numbers",
+        "Research the latest trends in artificial intelligence",
+        "Help me write a creative story about space exploration"
+    ]
+    
+    for query in queries:
+        print(f"\nQuery: {query}")
+        response = await system.route_query(query)
+        print(f"Response: {response[:200]}...")
+
+asyncio.run(main())
+```
+
+</CodeGroup>
+
+## Core Methods
+
+### init()
+
+Initialize the agent and test connections.
+
+```python
+async def init(self) -> None
+```
+
+**Example:**
+```python
+agent = await create_agent(config)
+await agent.init()  # Must call before using agent
+```
+
+### ask()
+
+Send a simple question to the agent.
+
+```python
+async def ask(self, input_text: str) -> str
+```
+
+**Parameters:**
+- `input_text` (str): The question or message to send
+
+**Returns:** `str` - The agent's response
+
+**Example:**
+```python
+response = await agent.ask('What is machine learning?')
+print(response)
+```
+
+### chat_with_context()
+
+Have a conversation with full context and memory.
+
+```python
+async def chat_with_context(self, input_text: str) -> str
+```
+
+**Parameters:**
+- `input_text` (str): The message to send
+
+**Returns:** `str` - The agent's response with full context
+
+**Example:**
+```python
+# Messages are automatically added to conversation history
+response1 = await agent.chat_with_context('My name is Alice')
+response2 = await agent.chat_with_context('What is my name?')  # Will remember Alice
+```
+
+### stream_chat()
+
+Stream responses in real-time.
+
+```python
+async def stream_chat(
+    self, 
+    input_text: str, 
+    on_chunk: Callable[[str], None]
+) -> str
+```
+
+**Parameters:**
+- `input_text` (str): The message to send
+- `on_chunk` (Callable): Function to handle each response chunk
+
+**Returns:** `str` - Complete response after streaming
+
+**Example:**
+```python
+def print_chunk(chunk: str):
+    print(chunk, end='', flush=True)
+
+response = await agent.stream_chat('Tell me a story', print_chunk)
+```
+
+## System Prompt Management
+
+### set_system_prompt()
+
+Set the agent's system prompt to define behavior.
+
+```python
+def set_system_prompt(self, prompt: str) -> None
+```
+
+**Example:**
+```python
+agent.set_system_prompt('''
+You are a helpful coding assistant. When helping with code:
+1. Provide clear explanations
+2. Include comments in code examples
+3. Suggest best practices
+4. Ask for clarification when needed
+''')
+```
+
+### save_system_prompt()
+
+Save the current system prompt to persistent memory.
+
+```python
+async def save_system_prompt(self) -> None
+```
+
+**Example:**
+```python
+agent.set_system_prompt('You are a creative writing assistant.')
+await agent.save_system_prompt()  # Persists across sessions
+```
+
+## Memory Methods
+
+### remember()
+
+Store data in persistent memory.
+
+```python
+async def remember(self, key: str, value: Any) -> None
+```
+
+### recall()
+
+Retrieve data from persistent memory.
+
+```python
+async def recall(self, key: str) -> Any
+```
+
+### forget()
+
+Remove data from persistent memory.
+
+```python
+async def forget(self, key: str) -> None
+```
+
+**Example:**
+```python
+# Store user preferences
+await agent.remember('user_preferences', {
+    'language': 'Python',
+    'experience_level': 'intermediate'
+})
+
+# Retrieve preferences
+prefs = await agent.recall('user_preferences')
+
+# Remove old data
+await agent.forget('temporary_data')
+```
+
+## Conversation Management
+
+### save_conversation()
+
+Save current conversation to persistent storage.
+
+```python
+async def save_conversation(self, conversation_id: Optional[str] = None) -> str
+```
+
+**Returns:** `str` - The conversation ID
+
+### load_conversation()
+
+Load a previously saved conversation.
+
+```python
+async def load_conversation(self, conversation_id: str) -> None
+```
+
+### clear_conversation()
+
+Clear current conversation from memory.
+
+```python
+def clear_conversation(self) -> None
+```
+
+**Example:**
+```python
+# Have a conversation
+await agent.ask('Hello')
+await agent.ask('How are you?')
+
+# Save it
+conv_id = await agent.save_conversation('greeting_session')
+
+# Start fresh
+agent.clear_conversation()
+
+# Load previous conversation
+await agent.load_conversation('greeting_session')
+```
+
+## Configuration Methods
+
+### set_temperature()
+
+Adjust response creativity.
+
+```python
+def set_temperature(self, temperature: float) -> None
+```
+
+### set_max_tokens()
+
+Set maximum response length.
+
+```python
+def set_max_tokens(self, max_tokens: int) -> None
+```
+
+**Example:**
+```python
+agent.set_temperature(0.9)    # More creative
+agent.set_max_tokens(2000)    # Longer responses
+```
+
+## Introspection Methods
+
+### get_stats()
+
+Get agent statistics and current state.
+
+```python
+def get_stats(self) -> Dict[str, Any]
+```
+
+**Returns:** Dictionary with agent statistics
+
+### get_service_info()
+
+Get information about the connected AI service.
+
+```python
+async def get_service_info(self) -> ServiceMetadata
+```
+
+**Example:**
+```python
+stats = agent.get_stats()
+print(f"Agent: {stats['name']}")
+print(f"Messages in memory: {stats['memory']['ephemeral_messages']}")
+
+service_info = await agent.get_service_info()
+print(f"Model: {service_info.model}")
+```
+
+## Error Handling
+
+```python
+from zg_ai_sdk import SDKError
+
+try:
+    agent = await create_agent(config)
+    await agent.init()
+    response = await agent.ask('Hello')
+except SDKError as e:
+    print(f"SDK Error: {e.message} (Code: {e.code})")
+except Exception as e:
+    print(f"Unexpected error: {e}")
+```
+
+## Best Practices
+
+1. **Always Initialize**: Call `await agent.init()` before using the agent
+2. **Set System Prompts**: Define clear behavior with system prompts
+3. **Handle Errors**: Implement proper error handling for network issues
+4. **Manage Memory**: Use conversation management for long sessions
+5. **Save Important Data**: Store critical information in persistent memory
+6. **Monitor Usage**: Check agent stats periodically for performance insights
+
+## Next Steps
+
+- [Agent Tools](/api-reference-python/agent/tools)
+- [Agent Execution](/api-reference-python/agent/execute)
+- [Memory Integration](/api-reference-python/memory/store)
