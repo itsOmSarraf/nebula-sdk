@@ -21,7 +21,7 @@
   "author": "Om Sarraf",
   "license": "MIT",
   "devDependencies": {
-    "@types/node": "^20.0.0",
+    "@types/node": "^20.19.17",
     "typescript": "^5.0.0"
   },
   "dependencies": {
