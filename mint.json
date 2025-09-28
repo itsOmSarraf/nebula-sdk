@@ -96,10 +96,17 @@
       ]
     },
     {
+      "group": "TypeScript Agent API",
+      "pages": [
+        "api-reference/agent/create",
+        "api-reference/agent/execute",
+        "api-reference/agent/tools"
+      ]
+    },
+    {
       "group": "TypeScript Chat API",
       "pages": [
         "api-reference/chat/create",
-        "api-reference/chat/stream",
         "api-reference/chat/history"
       ]
     },
@@ -112,24 +119,23 @@
       ]
     },
     {
-      "group": "TypeScript Agent API",
-      "pages": [
-        "api-reference/agent/create",
-        "api-reference/agent/execute",
-        "api-reference/agent/tools"
-      ]
-    },
-    {
       "group": "Python API Documentation",
       "pages": [
         "api-reference-python/introduction"
       ]
     },
     {
+      "group": "Python Agent API",
+      "pages": [
+        "api-reference-python/agent/create",
+        "api-reference-python/agent/execute",
+        "api-reference-python/agent/tools"
+      ]
+    },
+    {
       "group": "Python Chat API",
       "pages": [
         "api-reference-python/chat/create",
-        "api-reference-python/chat/stream",
         "api-reference-python/chat/history"
       ]
     },
@@ -139,14 +145,6 @@
         "api-reference-python/memory/store",
         "api-reference-python/memory/retrieve",
         "api-reference-python/memory/search"
-      ]
-    },
-    {
-      "group": "Python Agent API",
-      "pages": [
-        "api-reference-python/agent/create",
-        "api-reference-python/agent/execute",
-        "api-reference-python/agent/tools"
       ]
     },
     {
