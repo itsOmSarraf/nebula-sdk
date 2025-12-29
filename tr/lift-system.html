@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lift System Demo</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            max-width: 800px;
+            width: 100%;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+        }
+
+        .lift-container {
+            display: flex;
+            gap: 40px;
+            align-items: flex-start;
+        }
+
+        .building {
+            flex: 1;
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+            position: relative;
+            min-height: 400px;
+        }
+
+        .floor {
+            height: 60px;
+            border: 2px solid #ddd;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 15px;
+            background: white;
+            transition: all 0.3s ease;
+        }
+
+        .floor.active {
+            background: #4CAF50;
+            color: white;
+            border-color: #45a049;
+            transform: scale(1.02);
+        }
+
+        .floor-number {
+            font-weight: bold;
+            font-size: 1.2em;
+        }
+
+        .lift {
+            width: 40px;
+            height: 40px;
+            background: #ff6b6b;
+            border-radius: 50%;
+            position: absolute;
+            right: 20px;
+            transition: all 1s ease-in-out;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .controls {
+            flex: 1;
+        }
+
+        .button-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .floor-btn {
+            padding: 15px;
+            font-size: 1.2em;
+            font-weight: bold;
+            border: none;
+            border-radius: 10px;
+            background: #007bff;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        .floor-btn:hover {
+            background: #0056b3;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.2);
+        }
+
+        .floor-btn:active {
+            transform: translateY(0);
+        }
+
+        .queue-display {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .queue-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .queue-items {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .queue-item {
+            background: #17a2b8;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: bold;
+        }
+
+        .demo-section {
+            border-top: 2px solid #eee;
+            padding-top: 20px;
+        }
+
+        .demo-btn {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 1.1em;
+            cursor: pointer;
+            margin-right: 10px;
+            transition: background 0.3s ease;
+        }
+
+        .demo-btn:hover {
+            background: #218838;
+        }
+
+        .log-display {
+            background: #2d3748;
+            color: #e2e8f0;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .current-floor {
+            text-align: center;
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏢 Lift System Demo</h1>
+        
+        <div class="lift-container">
+            <!-- Building Visualization -->
+            <div class="building">
+                <div class="current-floor">Current Floor: <span id="currentFloor">1</span></div>
+                <div id="floors"></div>
+                <div class="lift" id="lift">🛗</div>
+            </div>
+
+            <!-- Controls -->
+            <div class="controls">
+                <div class="queue-display">
+                    <div class="queue-title">Floor Queue:</div>
+                    <div class="queue-items" id="queueDisplay"></div>
+                </div>
+
+                <div class="button-grid" id="floorButtons"></div>
+
+                <div class="demo-section">
+                    <h3>Demo Functions:</h3>
+                    <button class="demo-btn" onclick="runOriginalDemo()">Run Original Demo</button>
+                    <button class="demo-btn" onclick="clearQueue()">Clear Queue</button>
+                    <button class="demo-btn" onclick="randomFloors()">Random Floors</button>
+                </div>
+
+                <div class="log-display" id="logDisplay"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Convert your original TypeScript logic to JavaScript
+        const Clicks = (clicks) => {
+            clicks.forEach((click, index) => {
+                const floor = click;
+                console.log(floor, index);
+                logMessage(`Processing floor ${floor} at index ${index}`);
+            });
+        };
+
+        // Lift system state
+        let currentFloor = 1;
+        let floorQueue = [];
+        let isMoving = false;
+        const maxFloors = 8;
+
+        // Initialize the UI
+        function initializeUI() {
+            createFloors();
+            createFloorButtons();
+            updateLiftPosition();
+            updateQueueDisplay();
+        }
+
+        function createFloors() {
+            const floorsContainer = document.getElementById('floors');
+            floorsContainer.innerHTML = '';
+            
+            for (let i = maxFloors; i >= 1; i--) {
+                const floor = document.createElement('div');
+                floor.className = 'floor';
+                floor.id = `floor-${i}`;
+                floor.innerHTML = `
+                    <span class="floor-number">Floor ${i}</span>
+                    <span>🚪</span>
+                `;
+                floorsContainer.appendChild(floor);
+            }
+        }
+
+        function createFloorButtons() {
+            const buttonsContainer = document.getElementById('floorButtons');
+            buttonsContainer.innerHTML = '';
+            
+            for (let i = 1; i <= maxFloors; i++) {
+                const button = document.createElement('button');
+                button.className = 'floor-btn';
+                button.textContent = `Floor ${i}`;
+                button.onclick = () => addToQueue(i);
+                buttonsContainer.appendChild(button);
+            }
+        }
+
+        function addToQueue(floor) {
+            if (!floorQueue.includes(floor) && floor !== currentFloor) {
+                floorQueue.push(floor);
+                updateQueueDisplay();
+                logMessage(`Added floor ${floor} to queue`);
+                
+                if (!isMoving) {
+                    processQueue();
+                }
+            }
+        }
+
+        function updateQueueDisplay() {
+            const queueDisplay = document.getElementById('queueDisplay');
+            queueDisplay.innerHTML = '';
+            
+            floorQueue.forEach(floor => {
+                const item = document.createElement('div');
+                item.className = 'queue-item';
+                item.textContent = floor;
+                queueDisplay.appendChild(item);
+            });
+        }
+
+        function updateLiftPosition() {
+            const lift = document.getElementById('lift');
+            const floorHeight = 70; // Height of each floor + margin
+            const topPosition = (maxFloors - currentFloor) * floorHeight + 10;
+            lift.style.top = `${topPosition}px`;
+            
+            document.getElementById('currentFloor').textContent = currentFloor;
+            
+            // Highlight current floor
+            document.querySelectorAll('.floor').forEach(floor => {
+                floor.classList.remove('active');
+            });
+            document.getElementById(`floor-${currentFloor}`).classList.add('active');
+        }
+
+        async function processQueue() {
+            if (floorQueue.length === 0 || isMoving) return;
+            
+            isMoving = true;
+            const targetFloor = floorQueue.shift();
+            updateQueueDisplay();
+            
+            logMessage(`Moving to floor ${targetFloor}...`);
+            
+            // Simulate lift movement
+            const direction = targetFloor > currentFloor ? 1 : -1;
+            
+            while (currentFloor !== targetFloor) {
+                await new Promise(resolve => setTimeout(resolve, 500));
+                currentFloor += direction;
+                updateLiftPosition();
+            }
+            
+            logMessage(`Arrived at floor ${currentFloor}`);
+            
+            // Simulate door opening/closing
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            isMoving = false;
+            
+            // Process next floor in queue
+            if (floorQueue.length > 0) {
+                setTimeout(processQueue, 500);
+            }
+        }
+
+        function logMessage(message) {
+            const logDisplay = document.getElementById('logDisplay');
+            const timestamp = new Date().toLocaleTimeString();
+            logDisplay.innerHTML += `[${timestamp}] ${message}\n`;
+            logDisplay.scrollTop = logDisplay.scrollHeight;
+        }
+
+        function runOriginalDemo() {
+            const clicks = [5, 7, 8, 2, 3, 4];
+            logMessage('Running original demo with clicks: ' + clicks.join(', '));
+            Clicks(clicks);
+            
+            // Add these floors to the lift queue
+            clicks.forEach(floor => addToQueue(floor));
+        }
+
+        function clearQueue() {
+            floorQueue = [];
+            updateQueueDisplay();
+            logMessage('Queue cleared');
+        }
+
+        function randomFloors() {
+            const numFloors = Math.floor(Math.random() * 4) + 2; // 2-5 floors
+            const randomFloors = [];
+            
+            for (let i = 0; i < numFloors; i++) {
+                const floor = Math.floor(Math.random() * maxFloors) + 1;
+                if (!randomFloors.includes(floor)) {
+                    randomFloors.push(floor);
+                }
+            }
+            
+            logMessage('Adding random floors: ' + randomFloors.join(', '));
+            randomFloors.forEach(floor => addToQueue(floor));
+        }
+
+        // Initialize the application
+        window.onload = function() {
+            initializeUI();
+            logMessage('Lift system initialized');
+        };
+    </script>
+</body>
+</html>
